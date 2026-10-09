@@ -99,6 +99,14 @@ void HomeKeyProvisioning::begin()
     std::unique_lock<std::shared_mutex> guard(homeSpan.getMutex());
     active = this;
     commands = xQueueCreate(4, sizeof(Command));
+    if (nvs_open_from_partition("homekey", "commissioning", NVS_READWRITE, &codeHandle) == ESP_OK)
+    {
+        size_t size = sizeof(configuredCode);
+        if (nvs_get_blob(codeHandle, "code", configuredCode, &size) != ESP_OK || size != sizeof(configuredCode) ||
+            configuredCode[8] != 0 || !HomeKey::validPairingCode(std::string(configuredCode, 8)))
+            std::fill(std::begin(configuredCode), std::end(configuredCode), 0);
+    }
+    module.commissioningResult = HomeKey::validPairingCode(configuredCode) ? 0 : 4;
     homeSpan.setSerialInputDisable(true); // OpenKNX owns the console.
     homeSpan.setLogLevel(-1);
     char unavailableCode[9];
@@ -109,7 +117,7 @@ void HomeKeyProvisioning::begin()
     new AccessoryInfo();
     new Characteristic::Identify(); new Characteristic::Manufacturer("OpenKNX");
     new Characteristic::Model("XIAO ESP32-S3 PN7161"); new Characteristic::Name("OpenKNX Home Key");
-    new Characteristic::FirmwareRevision("0.1.0");
+    new Characteristic::FirmwareRevision("0.2.0");
     uint8_t mac[6]; esp_read_mac(mac, ESP_MAC_WIFI_STA);
     char serial[13]; snprintf(serial, sizeof(serial), "%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
     new Characteristic::SerialNumber(serial);
@@ -132,27 +140,64 @@ void HomeKeyProvisioning::poll()
     {
         if (command.pair)
         {
-            if (module.pairingAllowed()) homeSpan.setPairingCode(command.code, false);
+            if (command.epoch == module.commissioningEpoch.load())
+            {
+                if (!module.enabled || !module.pairingPermitted) module.commissioningResult = 3;
+                else
+                {
+                    bool persisted = true;
+                    if (command.saveCode)
+                    {
+                        persisted = codeHandle && HomeKey::validPairingCode(command.code) &&
+                            nvs_set_blob(codeHandle, "code", command.code, sizeof(command.code)) == ESP_OK && nvs_commit(codeHandle) == ESP_OK;
+                        if (persisted) std::copy(std::begin(command.code), std::end(command.code), configuredCode);
+                        else module.commissioningResult = 6;
+                    }
+                    if (persisted && command.open)
+                    {
+                        if (!HomeKey::validPairingCode(configuredCode)) module.commissioningResult = 4;
+                        else
+                        {
+                            homeSpan.setPairingCode(configuredCode, false); // SRP stays on the HAP worker.
+                            if (command.epoch == module.commissioningEpoch.load() && module.enabled && module.pairingPermitted)
+                            {
+                                uint32_t deadline = millis() + 300000;
+                                module.pairingEpoch = command.epoch;
+                                module.pairingUntil = deadline ? deadline : 1;
+                                module.commissioningResult = 1;
+                                commissioningWasOpen = true;
+                            }
+                            else
+                            {
+                                char code[9]; randomUnavailableCode(code); homeSpan.setPairingCode(code, false);
+                            }
+                        }
+                    }
+                    else if (persisted) module.commissioningResult = 0;
+                }
+            }
         }
         else homeSpan.setWifiCredentials(command.ssid, command.password);
         volatile char* secret = command.password;
         for (size_t i = 0; i < sizeof(command.password); ++i) secret[i] = 0;
+        secret = command.code;
+        for (size_t i = 0; i < sizeof(command.code); ++i) secret[i] = 0;
     }
+
     int feedback = pendingFeedback.exchange(-1);
     if (feedback >= 0)
     {
         lockState->setVal(feedback ? 1 : 0); lockTarget->setVal(feedback ? 1 : 0);
     }
-    homeSpan.poll();
     bool open = module.pairingAllowed();
     if (commissioningWasOpen && !open)
     {
         std::unique_lock<std::shared_mutex> guard(homeSpan.getMutex());
-        char code[9];
-        randomUnavailableCode(code);
-        homeSpan.setPairingCode(code, false);
+        char code[9]; randomUnavailableCode(code); homeSpan.setPairingCode(code, false);
+        if (module.commissioningResult == 1) module.commissioningResult = 2;
     }
     commissioningWasOpen = open;
+    homeSpan.poll();
 }
 bool HomeKeyProvisioning::wifi(const std::string& ssid, const std::string& password)
 {
@@ -165,13 +210,35 @@ bool HomeKeyProvisioning::wifi(const std::string& ssid, const std::string& passw
     for (size_t i = 0; i < sizeof(command.password); ++i) secret[i] = 0;
     return accepted;
 }
+bool HomeKeyProvisioning::queueCode(const std::string& code, bool open)
+{
+    if (!ready || !commands || !HomeKey::validPairingCode(code)) return false;
+    module.cancelCommissioning();
+    Command command;
+    command.pair = true; command.saveCode = true; command.open = open;
+    command.epoch = module.commissioningEpoch.load();
+    snprintf(command.code, sizeof(command.code), "%s", code.c_str());
+    bool accepted = xQueueSend(commands, &command, 0) == pdTRUE;
+    volatile char* secret = command.code;
+    for (size_t i = 0; i < sizeof(command.code); ++i) secret[i] = 0;
+    return accepted;
+}
 bool HomeKeyProvisioning::pairingCode(const std::string& code)
 {
+    return queueCode(code, true);
+}
+bool HomeKeyProvisioning::configurePairingCode(const std::string& code)
+{
+    return queueCode(code, false);
+}
+bool HomeKeyProvisioning::openPairingWindow()
+{
     if (!ready || !commands) return false;
-    Command command; command.pair = true;
-    snprintf(command.code, sizeof(command.code), "%s", code.c_str());
+    Command command; command.pair = true; command.open = true;
+    command.epoch = module.commissioningEpoch.load();
     return xQueueSend(commands, &command, 0) == pdTRUE;
 }
+
 void HomeKeyProvisioning::feedback(bool locked)
 {
     pendingFeedback = locked ? 1 : 0;

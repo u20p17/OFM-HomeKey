@@ -18,13 +18,27 @@ void HomeKeyModule::setup()
         return;
     }
     events = xQueueCreate(4, sizeof(Event));
+    if (!events) { fatal = true; logErrorP("Home Key event queue unavailable"); return; }
     provisioning = std::make_unique<HomeKeyProvisioning>(*this);
     logInfoP("Home Key ready for ETS enable; no endpoints authorized automatically");
 }
 
 void HomeKeyModule::loop()
 {
-    if (!events || !knx.configured()) { enabled = false; return; }
+    if (!knx.configured()) { enabled = false; policyLoaded = false; cancelCommissioning(); return; }
+    if (!events) { enabled = false; cancelCommissioning(); updateStatus(); return; }
+    if (!policyLoaded)
+    {
+        std::unique_lock<std::recursive_mutex> guard(store.mutex, std::try_to_lock);
+        if (!guard.owns_lock()) { enabled = false; return; }
+        static_assert(HK_Authorization02Enabled - HK_Authorization01Enabled == HomeKey::EtsRowBytes, "ETS row layout changed");
+        etsAuthorization = ParamHK_EtsAuthorization;
+        etsTableValid = !etsAuthorization || HomeKey::parseEtsRows(knx.paramData(HK_Authorization01Enabled), HomeKey::EtsRows * HomeKey::EtsRowBytes, etsMappings);
+        ++store.generation; // Downloaded policy invalidates every pending result.
+        policyLoaded = true;
+        endpointDirty = true;
+        reportedAuthorization = reportedCommissioning = reportedResult = -1;
+    }
     enabled = ParamHK_Enabled && !fatal;
     allowUid = ParamHK_AllowUid;
     pairingPermitted = ParamHK_PairingPermitted;
@@ -44,6 +58,13 @@ void HomeKeyModule::loop()
             logErrorP("Home Key task creation failed; reboot required");
         }
     }
+    if (!enabled || !pairingPermitted)
+        cancelCommissioning();
+    // Clear expired deadlines permanently; a retained millis deadline could
+    // become positive again after a later timer wrap.
+    uint32_t deadline = pairingUntil.load();
+    if (deadline && !HomeKey::windowOpen(millis(), deadline)) cancelCommissioning();
+    updateStatus();
     Event event;
     // Bound work per iteration. Never write KNX objects from either worker task.
     for (unsigned i = 0; i < 4 && xQueueReceive(events, &event, 0) == pdTRUE; ++i)
@@ -60,14 +81,14 @@ void HomeKeyModule::loop()
         {
             if (event.kind == EventKind::Authenticated && store.contains(event.issuer, event.endpoint))
             {
-                auto id = HomeKey::lookup(store.mappings, event.issuer, event.endpoint);
+                auto id = lookupAccessId(event.issuer, event.endpoint);
                 granted = id != HomeKey::InvalidId && openknxAccessControl.processHomeKeyCredential(id);
             }
             else if (event.kind == EventKind::Uid && allowUid)
             {
                 uint16_t reserved[HomeKey::MaxMappings];
                 size_t count = 0;
-                for (const auto& mapping : store.mappings) reserved[count++] = mapping.accessId;
+                for (const auto& mapping : activeMappings()) reserved[count++] = mapping.accessId;
                 granted = openknxAccessControl.processExternalNfcUid(event.uid, event.uidLength, reserved, count);
             }
         }
@@ -83,7 +104,7 @@ void HomeKeyModule::enqueue(const Event& event)
 
 bool HomeKeyModule::pairingAllowed() const
 {
-    return enabled && pairingPermitted && static_cast<int32_t>(pairingUntil.load() - millis()) > 0;
+    return enabled && pairingPermitted && HomeKey::windowOpen(millis(), pairingUntil.load(), pairingEpoch.load(), commissioningEpoch.load());
 }
 
 void HomeKeyModule::readerTask()
@@ -154,8 +175,68 @@ void HomeKeyModule::readerTask()
 
 void HomeKeyModule::processInputKo(GroupObject& ko)
 {
+    if (!knx.configured()) return;
     if (started && ko.asap() == HK_KoLockFeedback)
         provisioning->feedback(ko.value(DPT_Switch));
+    else if (ko.asap() == HK_KoCommissioningControl)
+    {
+        if (!ko.value(DPT_Switch)) { cancelCommissioning(); commissioningResult = 2; }
+        else if (!started || !enabled || !ParamHK_PairingPermitted) commissioningResult = 3;
+        else
+        {
+            uint32_t deadline = pairingUntil.load();
+            if (deadline && !HomeKey::windowOpen(millis(), deadline)) cancelCommissioning();
+            if (!provisioning->openPairingWindow()) commissioningResult = 5;
+        }
+    }
+    else if (ko.asap() == HK_KoEndpointIndex)
+    {
+        endpointIndex = ko.value(DPT_Value_1_Ucount);
+        endpointDirty = true;
+    }
+}
+
+void HomeKeyModule::publishEndpoint()
+{
+    char high[15] = {}, low[15] = {}, endpoint[15] = {};
+    static const char digits[] = "0123456789abcdef";
+    auto encode = [&](const uint8_t* data, size_t size, char* out)
+    {
+        for (size_t i = 0; i < size; ++i) { out[2*i] = digits[data[i] >> 4]; out[2*i+1] = digits[data[i] & 15]; }
+    };
+    size_t index = 0;
+    for (const auto& issuer : store.entries)
+        for (const auto& item : issuer.endpoints)
+        {
+            if (index++ != endpointIndex || issuer.id.size() != 8 || item.id.size() != 6) continue;
+            encode(issuer.id.data(), 4, high); encode(issuer.id.data() + 4, 4, low); encode(item.id.data(), 6, endpoint);
+        }
+    KoHK_IssuerHigh.value(high, DPT_String_ASCII);
+    KoHK_IssuerLow.value(low, DPT_String_ASCII);
+    KoHK_EndpointId.value(endpoint, DPT_String_ASCII);
+    endpointDirty = false;
+    inspectedGeneration = store.generation;
+}
+
+void HomeKeyModule::updateStatus()
+{
+    int open = pairingAllowed();
+    int result = commissioningResult.load();
+    if (open != reportedCommissioning) { KoHK_CommissioningOpen.value(bool(open), DPT_Switch); reportedCommissioning = open; }
+    if (result != reportedResult) { KoHK_CommissioningResult.value(uint8_t(result), DPT_Value_1_Ucount); reportedResult = result; }
+    if (millis() - statusAt < 1000 && !endpointDirty && reportedAuthorization >= 0) return;
+    std::unique_lock<std::recursive_mutex> guard(store.mutex, std::try_to_lock);
+    if (!guard.owns_lock()) return; // Never wait for an APDU or credential write on the KNX thread.
+    statusAt = millis();
+    int status = (!store.healthy || fatal) ? 6 : !enabled ? 0 : !etsAuthorization ? 1 : !etsTableValid ? 3 : 2;
+    if (status == 2)
+        for (const auto& mapping : etsMappings)
+        {
+            if (!openknxAccessControl.homeKeyAccessIdAvailable(mapping.accessId)) { status = 5; break; }
+            if (!store.contains(mapping.issuer, mapping.endpoint)) status = 4;
+        }
+    if (status != reportedAuthorization) { KoHK_AuthorizationStatus.value(uint8_t(status), DPT_Value_1_Ucount); reportedAuthorization = status; }
+    if (endpointDirty || inspectedGeneration != store.generation) publishEndpoint();
 }
 
 namespace
@@ -197,14 +278,13 @@ bool HomeKeyModule::processCommand(const std::string cmd, bool diagnoseKo)
         if (!ssid.empty() && ssid.size() <= 32 && password.size() <= 64)
             logInfoP("WiFi configuration %s", provisioning->wifi(ssid, password) ? "queued" : "busy; retry");
     }
-    else if (operation == "pair" && started && enabled && pairingPermitted)
+    else if ((operation == "pair" || operation == "code") && started && enabled && pairingPermitted)
     {
         std::string code; stream >> code;
         if (HomeKey::validPairingCode(code))
         {
-            pairingUntil = millis() + 300000;
-            if (provisioning->pairingCode(code)) logInfoP("NFC provisioning allowed for 5 minutes");
-            else { pairingUntil = 0; logInfoP("Home Key busy; retry command"); }
+            bool queued = operation == "pair" ? provisioning->pairingCode(code) : provisioning->configurePairingCode(code);
+            logInfoP("Commissioning command %s", queued ? "queued" : "busy; retry");
         }
     }
     else
@@ -220,11 +300,12 @@ bool HomeKeyModule::processCommand(const std::string cmd, bool diagnoseKo)
                     if (entry.id.size() != iid.size() || item.id.size() != eid.size()) continue;
                     std::copy(entry.id.begin(), entry.id.end(), iid.begin());
                     std::copy(item.id.begin(), item.id.end(), eid.begin());
-                    logInfoP("Issuer=%s endpoint=%s accessId=%u", hex(iid).c_str(), hex(eid).c_str(), HomeKey::lookup(store.mappings, iid, eid));
+                    logInfoP("Issuer=%s endpoint=%s accessId=%u", hex(iid).c_str(), hex(eid).c_str(), lookupAccessId(iid, eid));
                 }
         }
         else if (operation == "map" || operation == "unmap")
         {
+            if (etsAuthorization) { logInfoP("ETS authorization table active; edit permissions in ETS"); return true; }
             stream >> issuer >> endpoint;
             HomeKey::Mapping mapping;
             unsigned id;
@@ -242,8 +323,8 @@ bool HomeKeyModule::processCommand(const std::string cmd, bool diagnoseKo)
             store.save();
             logInfoP("Mapping update %s", store.healthy ? "saved" : "FAILED");
         }
-        else if (operation == "reset") { store.clear(); pairingUntil = 0; }
-        else logInfoP("hk wifi <SSID> <password> | hk pair <8digits> | hk list | hk map <issuer16hex> <endpoint12hex> <id0..1499> | hk unmap <issuer> <endpoint> | hk reset");
+        else if (operation == "reset") { store.clear(); cancelCommissioning(); }
+        else logInfoP("hk wifi <SSID> <password> | hk code <8digits> | hk pair <8digits> | hk list | hk map <issuer16hex> <endpoint12hex> <id0..1499> | hk unmap <issuer> <endpoint> | hk reset");
     }
     return true;
 }

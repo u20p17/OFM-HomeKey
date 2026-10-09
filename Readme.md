@@ -1,4 +1,4 @@
-# OFM-HomeKey 0.1.0
+# OFM-HomeKey 0.2.0
 
 Local ESP32 prototype for OAM-AccessControl, on `v1dev_HomeKey`.
 No remote repository or publication is created. The application records this
@@ -14,7 +14,10 @@ Only the OpenKNX thread invokes the private OFM-AccessControl friend adapter.
 
 Pairing alone grants no access. A complete 8-byte issuer ID and 6-byte endpoint
 ID must be explicitly mapped to logical NFC ID 0..1499. That slot must have an
-empty conventional UID record. Mapped IDs are reserved against UID enrollment
+empty conventional UID record. Permissions can come from the ETS table or
+local USB mappings, selected explicitly in ETS; local mode is the default.
+When ETS mode is selected, USB map/unmap commands are rejected and saved local
+mappings cannot grant access. Mapped IDs are reserved against UID enrollment
 and lookup. Existing NFCACT actions and KNX status/synchronization handle the
 mapped ID. A failed Home Key authentication never falls back to its UID.
 Conventional tags can be enabled separately in ETS. Home app remote unlock
@@ -28,11 +31,14 @@ an owned 18-byte member, retained for the reader lifetime.
 
 ## Storage and lifecycle
 
-Reader identity, endpoint keys/counters and mappings use one atomic, bounded
+Reader identity, endpoint keys/counters and local USB mappings use one atomic, bounded
 NVS blob (schema `HKS1`) in partition `homekey`, namespace `ofm-homekey`.
 Limits: 16 issuers, 64 endpoints total, 64 mappings, 32 KB encoded blob.
 No private credential is placed in ETS, KNX objects or public logs. HAP pairing
-and Wi-Fi use HomeSpan's namespaces in the default NVS partition.
+and Wi-Fi use HomeSpan's namespaces in the default NVS partition. The locally
+configured HomeKit setup code is stored privately in the `commissioning`
+namespace of `homekey`; it is never placed in an ETS parameter or telegram.
+ETS mappings live in the KNX parameter table, not in the credential blob.
 
 Persistence failure disables authentication. Corrupt records are not silently
 erased. Endpoint removal prunes its mappings; removing an issuer makes all its
@@ -40,9 +46,12 @@ endpoints inaccessible. Removing the last HAP administrator clears Home Key
 state. Replacing the reader key/group/sub-identifier clears endpoint keys and
 mappings while retaining paired issuer public keys. `hk reset` explicitly clears
 Home Key data and closes commissioning; it does not erase HAP pairing or UID
-records. Firmware updates retain the NVS partitions. ETS disables access while
+records or the privately configured commissioning code. Firmware updates retain the NVS partitions. ETS disables access while
 tables are unloaded and reloads policy afterward, retaining credentials/mappings.
-Reboot retains mappings but closes commissioning and rotates the setup code.
+Reboot retains configuration but closes commissioning and replaces the active
+HomeSpan setup code with an undisclosed random code. ETS can reopen the window
+using the privately stored local code. Expired deadlines are cleared, and a
+request epoch prevents a late worker from reopening a canceled window.
 
 This development layout does not enable NVS/flash encryption or secure boot.
 Production storage protection, pairing-window race hardening against an already
@@ -50,14 +59,83 @@ started HAP Pair-Setup, OTA/reset policy validation, watchdog/RF testing and
 on-device iPhone/Watch provisioning are remaining work. Native tests cover the
 store and selection/mapping policy; they do not simulate an Apple credential.
 
-## Commissioning
+## Commissioning from ETS
 
-Use OAM's `debug_ESP32S3_AppleHomeKey` target and its separate application/header.
-Enable Home Key and local NFC commissioning in ETS, then use the local USB
-console (KNX diagnostic commands cannot configure this module):
+Use OAM's `debug_ESP32S3_AppleHomeKey` target and the matching development
+application A6/02 version 0.2 / header. Existing version 0.1 downloads need the
+new application because the parameter table and communication objects changed.
+Enable Home Key and `NFC-Inbetriebnahme über USB/KNX erlauben` in ETS.
+Set network credentials and a private setup code once at the local USB console:
 
 ```
 hk wifi <SSID-without-spaces> <password>
+hk code <8-digit-HomeKit-code>
+```
+
+Choose a code that is neither repeated digits nor 12345678/87654321. Wait until
+the HAP worker is ready; retry if a command reports busy. The code is persisted
+on that worker. A successful `hk code` does not open commissioning.
+
+Assign group addresses to the following objects and use ETS Group Monitor:
+
+| KO | Function | DPT |
+| --- | --- | --- |
+| 11 | Physical lock feedback, 1=locked | 1.001 |
+| 12 | Commissioning command: 1=open for five minutes, 0=close | 1.001 |
+| 13 | Actual commissioning window open | 1.001 |
+| 14 | Authorization table status | 5.010 |
+| 60 | Select provisioned endpoint index, 0..63 | 5.010 |
+| 61 | Issuer ID, first 8 hex characters | 16.000 |
+| 62 | Issuer ID, last 8 hex characters | 16.000 |
+| 63 | Endpoint ID, 12 hex characters | 16.000 |
+| 64 | Commissioning command result | 5.010 |
+
+Write 1 to KO 12, wait for KO 13=1, then add the accessory in Apple Home using
+the locally configured code. An ETS request cannot open commissioning while the
+ETS permit is off, before startup completes, or without a valid private code.
+Read/removal operations remain available to paired controllers after the window
+closes; NFC credential writes require the open window. HomeKit pairing alone
+continues to grant no door access.
+
+For ETS authorization, set `Berechtigungen aus ETS-Tabelle` to Yes. After a
+phone/watch is provisioned, write index 0 to KO 60 (then 1, 2, etc.). Join the
+strings from KOs 61 and 62 to get its full 16-character issuer ID; KO 63 supplies
+the 12-character endpoint ID. Out-of-range indexes return blank IDs. Indexes can
+change when credentials are removed; use the full IDs as authorization keys.
+The objects contain public identifiers only, never private keys or setup codes.
+
+Enable one of the 16 ETS authorization rows, enter those IDs and an empty
+logical NFC action ID 0..1499, configure its existing NFCACT action and download
+the parameters. Add a separate row for each authorized endpoint. Disable/remove
+a row and download to revoke its authorization. Download closes commissioning
+and invalidates all queued results before the new table is used.
+
+Malformed hex, overlong values, duplicate endpoint rows, duplicate action IDs
+or IDs outside 0..1499 invalidate the entire ETS table: no Home Key can use a
+local mapping as fallback. A well-formed row for an endpoint not yet provisioned
+remains pending and cannot grant until that identity exists and authenticates.
+A UID-occupied/enrolling ID is blocked; mapped IDs are reserved against ordinary
+UID enrollment/lookup. Other valid, provisioned rows remain usable when one row
+is pending or blocked. ETS rows remain policy declarations across credential
+reset/reprovisioning; remove the row to revoke the identity's policy permanently.
+
+Authorization status (KO 14): 0=disabled, 1=local USB policy active,
+2=ETS table accepted/all endpoints available, 3=invalid ETS table,
+4=one or more endpoints not provisioned, 5=UID slot collision/enrollment,
+6=storage/crypto/runtime unavailable. An empty valid ETS table reports 2 and
+authorizes nobody. Status 4/5 reports an affected row; runtime checks still apply
+to each endpoint and action ID.
+
+Commissioning result (KO 64): 0=ready/code saved, 1=window opened,
+2=closed/expired, 3=not permitted/not started, 4=no private setup code,
+5=worker not ready/queue busy, 6=private code persistence failed. KO 13 is the
+current open state; KO 64 reports the last processed command/result. Repeated
+open requests start a fresh five-minute window after the worker applies the
+code. Closing cancels queued requests as well as the current window.
+
+## Local USB alternatives
+
+```
 hk pair <8-digit-HomeKit-code>
 hk list
 hk map <issuer16hex> <endpoint12hex> <id0..1499>
@@ -65,15 +143,13 @@ hk unmap <issuer16hex> <endpoint12hex>
 hk reset
 ```
 
-Choose a HomeKit code that is neither repeated digits nor 12345678/87654321.
-`hk pair` opens a five-minute provisioning window. Add the accessory in Apple
-Home using that code. Existing paired controllers may read or remove NFC
-credentials after the window closes; writes require the local window.
-After provisioning, list endpoints and map each authorized device to an empty
-logical ID configured in the existing NFC action table. Until mapped, taps are
-denied. Map updates and revocations invalidate pending results immediately.
-Hardware commissioning is a validation plan, not a claim that an iPhone/Watch
-has already been provisioned on this board.
+`hk pair` saves the code and opens a window. Map/unmap works only when ETS
+authorization is set to No; that mode retains up to 64 persistent local mappings.
+KNX diagnostic console commands cannot configure Wi-Fi, setup codes or local
+mappings. `hk reset` clears credentials/local mappings and closes commissioning,
+retaining HAP/Wi-Fi, the private setup code and the ETS policy declarations.
+Hardware commissioning remains a validation plan: no phone/watch has been
+provisioned on this board during these software checks.
 
 Lock feedback is KO 11, 1=physically locked; its initial HomeKit state is Unknown.
 The PN7161 prototype pins are CS=GPIO1, SCLK=7, MISO=8, MOSI=9, IRQ=3, VEN=4.
@@ -105,6 +181,10 @@ c++ -std=c++17 -DOPENKNX_HOMEKEY_ENABLED -DARDUINO_ARCH_ESP32 \
 /tmp/oam-homekey-store-test
 ```
 
-These exercise selection downgrade denial, setup-code validation, explicit
-mappings and collisions, reboot persistence, endpoint/identity revocation,
-stale-event generation, corrupt/truncated storage, failed NVS commits and reset.
+These exercise the actual ETS row decoder and authority selection, all 16 rows,
+malformed/overlong IDs and duplicates, no local fallback in ETS mode, empty-table
+revocation, setup-code validation, expiry/millis wrap and canceled request epochs,
+selection downgrade denial, mappings/collisions, reboot persistence,
+endpoint/identity revocation, stale-event generation, corrupt/truncated storage,
+failed NVS commits and reset. HomeSpan/NVS commissioning commands and real KNX
+telegram timing still require device testing.

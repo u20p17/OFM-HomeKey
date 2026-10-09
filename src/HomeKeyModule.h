@@ -18,8 +18,8 @@ class HomeKeyModule : public OpenKNX::Module
     void setup() override;
     void loop() override;
     void processInputKo(GroupObject&) override;
-    void processBeforeTablesUnload() override { enabled = false; }
-    void processBeforeRestart() override { enabled = false; }
+    void processBeforeTablesUnload() override { enabled = false; policyLoaded = false; cancelCommissioning(); }
+    void processBeforeRestart() override { enabled = false; cancelCommissioning(); }
     bool processCommand(const std::string cmd, bool diagnoseKo) override;
     bool pairingAllowed() const;
     HomeKeyCredentialStore store;
@@ -39,6 +39,28 @@ class HomeKeyModule : public OpenKNX::Module
     void handleTag(const std::vector<uint8_t>& uid, uint8_t sak);
     void authenticate(const std::vector<uint8_t>& selectResponse);
     void enqueue(const Event&);
+    void cancelCommissioning() { ++commissioningEpoch; pairingUntil = 0; }
+    const std::vector<HomeKey::Mapping>& activeMappings() const { return etsAuthorization ? etsMappings : store.mappings; }
+    uint16_t lookupAccessId(const HomeKey::IssuerId& issuer, const HomeKey::EndpointId& endpoint) const
+    {
+        return policyLoaded ? HomeKey::authorizedId(etsAuthorization, etsTableValid, store.mappings, etsMappings, issuer, endpoint) : HomeKey::InvalidId;
+    }
+    void updateStatus();
+    void publishEndpoint();
+    std::atomic<bool> policyLoaded{false};
+    bool etsAuthorization = false;
+    bool etsTableValid = false;
+    std::vector<HomeKey::Mapping> etsMappings;
+    uint32_t statusAt = 0;
+    uint32_t inspectedGeneration = UINT32_MAX;
+    uint8_t endpointIndex = 0;
+    bool endpointDirty = true;
+    int reportedAuthorization = -1;
+    int reportedCommissioning = -1;
+    int reportedResult = -1;
+    std::atomic<uint32_t> commissioningEpoch{0};
+    std::atomic<uint32_t> pairingEpoch{0};
+    std::atomic<uint8_t> commissioningResult{0};
     std::array<uint8_t, 18> ecp{};
     std::unique_ptr<INfcReader> reader;
     std::unique_ptr<HomeKeyProvisioning> provisioning;

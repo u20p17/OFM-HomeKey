@@ -56,7 +56,7 @@ void HomeKeyModule::authenticate(const std::vector<uint8_t>& response)
                 std::copy(outcome.issuer->id.begin(), outcome.issuer->id.end(), event.issuer.begin());
                 std::copy(outcome.endpoint->id.begin(), outcome.endpoint->id.end(), event.endpoint.begin());
                 store.save(); // Persist updated endpoint keys before any authorization event.
-                if (store.healthy && store.contains(event.issuer, event.endpoint) && HomeKey::lookup(store.mappings, event.issuer, event.endpoint) != HomeKey::InvalidId)
+                if (store.healthy && store.contains(event.issuer, event.endpoint) && lookupAccessId(event.issuer, event.endpoint) != HomeKey::InvalidId)
                     event.kind = EventKind::Authenticated;
             }
         }

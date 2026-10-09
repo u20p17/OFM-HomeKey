@@ -10,25 +10,174 @@
               <Enumeration Text="Ja" Value="1" Id="%ENID%" />
             </TypeRestriction>
           </ParameterType>
+          <ParameterType Id="%AID%_PT-HomeKeyIssuer" Name="HomeKeyIssuer"><TypeText SizeInBit="136" /></ParameterType>
+          <ParameterType Id="%AID%_PT-HomeKeyEndpoint" Name="HomeKeyEndpoint"><TypeText SizeInBit="104" /></ParameterType>
+          <ParameterType Id="%AID%_PT-HomeKeyAccessId" Name="HomeKeyAccessId"><TypeNumber SizeInBit="16" Type="unsignedInt" minInclusive="0" maxInclusive="1499" /></ParameterType>
         </ParameterTypes>
         <Parameters>
           <Union SizeInBit="8">
             <Memory CodeSegment="%MID%" Offset="0" BitOffset="0" />
             <Parameter Id="%AID%_UP-%TT%00001" Name="Enabled" ParameterType="%AID%_PT-HomeKeyYesNo" Offset="0" BitOffset="0" Text="Apple Home Key aktivieren" Value="0" />
-            <Parameter Id="%AID%_UP-%TT%00002" Name="PairingPermitted" ParameterType="%AID%_PT-HomeKeyYesNo" Offset="0" BitOffset="1" Text="Lokale NFC-Inbetriebnahme erlauben" Value="0" />
+            <Parameter Id="%AID%_UP-%TT%00002" Name="PairingPermitted" ParameterType="%AID%_PT-HomeKeyYesNo" Offset="0" BitOffset="1" Text="NFC-Inbetriebnahme über USB/KNX erlauben" Value="0" />
             <Parameter Id="%AID%_UP-%TT%00003" Name="AllowUid" ParameterType="%AID%_PT-HomeKeyYesNo" Offset="0" BitOffset="2" Text="Konventionelle UID-Tags zulassen" Value="1" />
+            <Parameter Id="%AID%_UP-%TT%00004" Name="EtsAuthorization" ParameterType="%AID%_PT-HomeKeyYesNo" Offset="0" BitOffset="3" Text="Berechtigungen aus ETS-Tabelle (sonst USB)" Value="0" />
           </Union>
+          <Parameter Id="%AID%_P-%TT%00100" Name="Authorization01Enabled" ParameterType="%AID%_PT-HomeKeyYesNo" Text="Berechtigung 1 aktiv" Value="0"><Memory CodeSegment="%MID%" Offset="1" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00101" Name="Authorization01Issuer" ParameterType="%AID%_PT-HomeKeyIssuer" Text="Issuer-ID (16 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="2" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00102" Name="Authorization01Endpoint" ParameterType="%AID%_PT-HomeKeyEndpoint" Text="Endpoint-ID (12 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="19" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00103" Name="Authorization01AccessId" ParameterType="%AID%_PT-HomeKeyAccessId" Text="Logische NFC-Aktions-ID" Value="0"><Memory CodeSegment="%MID%" Offset="32" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00104" Name="Authorization02Enabled" ParameterType="%AID%_PT-HomeKeyYesNo" Text="Berechtigung 2 aktiv" Value="0"><Memory CodeSegment="%MID%" Offset="34" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00105" Name="Authorization02Issuer" ParameterType="%AID%_PT-HomeKeyIssuer" Text="Issuer-ID (16 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="35" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00106" Name="Authorization02Endpoint" ParameterType="%AID%_PT-HomeKeyEndpoint" Text="Endpoint-ID (12 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="52" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00107" Name="Authorization02AccessId" ParameterType="%AID%_PT-HomeKeyAccessId" Text="Logische NFC-Aktions-ID" Value="0"><Memory CodeSegment="%MID%" Offset="65" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00108" Name="Authorization03Enabled" ParameterType="%AID%_PT-HomeKeyYesNo" Text="Berechtigung 3 aktiv" Value="0"><Memory CodeSegment="%MID%" Offset="67" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00109" Name="Authorization03Issuer" ParameterType="%AID%_PT-HomeKeyIssuer" Text="Issuer-ID (16 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="68" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00110" Name="Authorization03Endpoint" ParameterType="%AID%_PT-HomeKeyEndpoint" Text="Endpoint-ID (12 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="85" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00111" Name="Authorization03AccessId" ParameterType="%AID%_PT-HomeKeyAccessId" Text="Logische NFC-Aktions-ID" Value="0"><Memory CodeSegment="%MID%" Offset="98" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00112" Name="Authorization04Enabled" ParameterType="%AID%_PT-HomeKeyYesNo" Text="Berechtigung 4 aktiv" Value="0"><Memory CodeSegment="%MID%" Offset="100" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00113" Name="Authorization04Issuer" ParameterType="%AID%_PT-HomeKeyIssuer" Text="Issuer-ID (16 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="101" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00114" Name="Authorization04Endpoint" ParameterType="%AID%_PT-HomeKeyEndpoint" Text="Endpoint-ID (12 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="118" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00115" Name="Authorization04AccessId" ParameterType="%AID%_PT-HomeKeyAccessId" Text="Logische NFC-Aktions-ID" Value="0"><Memory CodeSegment="%MID%" Offset="131" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00116" Name="Authorization05Enabled" ParameterType="%AID%_PT-HomeKeyYesNo" Text="Berechtigung 5 aktiv" Value="0"><Memory CodeSegment="%MID%" Offset="133" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00117" Name="Authorization05Issuer" ParameterType="%AID%_PT-HomeKeyIssuer" Text="Issuer-ID (16 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="134" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00118" Name="Authorization05Endpoint" ParameterType="%AID%_PT-HomeKeyEndpoint" Text="Endpoint-ID (12 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="151" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00119" Name="Authorization05AccessId" ParameterType="%AID%_PT-HomeKeyAccessId" Text="Logische NFC-Aktions-ID" Value="0"><Memory CodeSegment="%MID%" Offset="164" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00120" Name="Authorization06Enabled" ParameterType="%AID%_PT-HomeKeyYesNo" Text="Berechtigung 6 aktiv" Value="0"><Memory CodeSegment="%MID%" Offset="166" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00121" Name="Authorization06Issuer" ParameterType="%AID%_PT-HomeKeyIssuer" Text="Issuer-ID (16 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="167" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00122" Name="Authorization06Endpoint" ParameterType="%AID%_PT-HomeKeyEndpoint" Text="Endpoint-ID (12 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="184" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00123" Name="Authorization06AccessId" ParameterType="%AID%_PT-HomeKeyAccessId" Text="Logische NFC-Aktions-ID" Value="0"><Memory CodeSegment="%MID%" Offset="197" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00124" Name="Authorization07Enabled" ParameterType="%AID%_PT-HomeKeyYesNo" Text="Berechtigung 7 aktiv" Value="0"><Memory CodeSegment="%MID%" Offset="199" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00125" Name="Authorization07Issuer" ParameterType="%AID%_PT-HomeKeyIssuer" Text="Issuer-ID (16 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="200" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00126" Name="Authorization07Endpoint" ParameterType="%AID%_PT-HomeKeyEndpoint" Text="Endpoint-ID (12 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="217" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00127" Name="Authorization07AccessId" ParameterType="%AID%_PT-HomeKeyAccessId" Text="Logische NFC-Aktions-ID" Value="0"><Memory CodeSegment="%MID%" Offset="230" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00128" Name="Authorization08Enabled" ParameterType="%AID%_PT-HomeKeyYesNo" Text="Berechtigung 8 aktiv" Value="0"><Memory CodeSegment="%MID%" Offset="232" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00129" Name="Authorization08Issuer" ParameterType="%AID%_PT-HomeKeyIssuer" Text="Issuer-ID (16 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="233" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00130" Name="Authorization08Endpoint" ParameterType="%AID%_PT-HomeKeyEndpoint" Text="Endpoint-ID (12 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="250" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00131" Name="Authorization08AccessId" ParameterType="%AID%_PT-HomeKeyAccessId" Text="Logische NFC-Aktions-ID" Value="0"><Memory CodeSegment="%MID%" Offset="263" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00132" Name="Authorization09Enabled" ParameterType="%AID%_PT-HomeKeyYesNo" Text="Berechtigung 9 aktiv" Value="0"><Memory CodeSegment="%MID%" Offset="265" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00133" Name="Authorization09Issuer" ParameterType="%AID%_PT-HomeKeyIssuer" Text="Issuer-ID (16 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="266" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00134" Name="Authorization09Endpoint" ParameterType="%AID%_PT-HomeKeyEndpoint" Text="Endpoint-ID (12 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="283" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00135" Name="Authorization09AccessId" ParameterType="%AID%_PT-HomeKeyAccessId" Text="Logische NFC-Aktions-ID" Value="0"><Memory CodeSegment="%MID%" Offset="296" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00136" Name="Authorization10Enabled" ParameterType="%AID%_PT-HomeKeyYesNo" Text="Berechtigung 10 aktiv" Value="0"><Memory CodeSegment="%MID%" Offset="298" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00137" Name="Authorization10Issuer" ParameterType="%AID%_PT-HomeKeyIssuer" Text="Issuer-ID (16 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="299" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00138" Name="Authorization10Endpoint" ParameterType="%AID%_PT-HomeKeyEndpoint" Text="Endpoint-ID (12 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="316" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00139" Name="Authorization10AccessId" ParameterType="%AID%_PT-HomeKeyAccessId" Text="Logische NFC-Aktions-ID" Value="0"><Memory CodeSegment="%MID%" Offset="329" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00140" Name="Authorization11Enabled" ParameterType="%AID%_PT-HomeKeyYesNo" Text="Berechtigung 11 aktiv" Value="0"><Memory CodeSegment="%MID%" Offset="331" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00141" Name="Authorization11Issuer" ParameterType="%AID%_PT-HomeKeyIssuer" Text="Issuer-ID (16 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="332" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00142" Name="Authorization11Endpoint" ParameterType="%AID%_PT-HomeKeyEndpoint" Text="Endpoint-ID (12 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="349" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00143" Name="Authorization11AccessId" ParameterType="%AID%_PT-HomeKeyAccessId" Text="Logische NFC-Aktions-ID" Value="0"><Memory CodeSegment="%MID%" Offset="362" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00144" Name="Authorization12Enabled" ParameterType="%AID%_PT-HomeKeyYesNo" Text="Berechtigung 12 aktiv" Value="0"><Memory CodeSegment="%MID%" Offset="364" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00145" Name="Authorization12Issuer" ParameterType="%AID%_PT-HomeKeyIssuer" Text="Issuer-ID (16 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="365" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00146" Name="Authorization12Endpoint" ParameterType="%AID%_PT-HomeKeyEndpoint" Text="Endpoint-ID (12 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="382" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00147" Name="Authorization12AccessId" ParameterType="%AID%_PT-HomeKeyAccessId" Text="Logische NFC-Aktions-ID" Value="0"><Memory CodeSegment="%MID%" Offset="395" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00148" Name="Authorization13Enabled" ParameterType="%AID%_PT-HomeKeyYesNo" Text="Berechtigung 13 aktiv" Value="0"><Memory CodeSegment="%MID%" Offset="397" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00149" Name="Authorization13Issuer" ParameterType="%AID%_PT-HomeKeyIssuer" Text="Issuer-ID (16 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="398" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00150" Name="Authorization13Endpoint" ParameterType="%AID%_PT-HomeKeyEndpoint" Text="Endpoint-ID (12 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="415" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00151" Name="Authorization13AccessId" ParameterType="%AID%_PT-HomeKeyAccessId" Text="Logische NFC-Aktions-ID" Value="0"><Memory CodeSegment="%MID%" Offset="428" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00152" Name="Authorization14Enabled" ParameterType="%AID%_PT-HomeKeyYesNo" Text="Berechtigung 14 aktiv" Value="0"><Memory CodeSegment="%MID%" Offset="430" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00153" Name="Authorization14Issuer" ParameterType="%AID%_PT-HomeKeyIssuer" Text="Issuer-ID (16 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="431" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00154" Name="Authorization14Endpoint" ParameterType="%AID%_PT-HomeKeyEndpoint" Text="Endpoint-ID (12 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="448" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00155" Name="Authorization14AccessId" ParameterType="%AID%_PT-HomeKeyAccessId" Text="Logische NFC-Aktions-ID" Value="0"><Memory CodeSegment="%MID%" Offset="461" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00156" Name="Authorization15Enabled" ParameterType="%AID%_PT-HomeKeyYesNo" Text="Berechtigung 15 aktiv" Value="0"><Memory CodeSegment="%MID%" Offset="463" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00157" Name="Authorization15Issuer" ParameterType="%AID%_PT-HomeKeyIssuer" Text="Issuer-ID (16 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="464" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00158" Name="Authorization15Endpoint" ParameterType="%AID%_PT-HomeKeyEndpoint" Text="Endpoint-ID (12 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="481" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00159" Name="Authorization15AccessId" ParameterType="%AID%_PT-HomeKeyAccessId" Text="Logische NFC-Aktions-ID" Value="0"><Memory CodeSegment="%MID%" Offset="494" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00160" Name="Authorization16Enabled" ParameterType="%AID%_PT-HomeKeyYesNo" Text="Berechtigung 16 aktiv" Value="0"><Memory CodeSegment="%MID%" Offset="496" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00161" Name="Authorization16Issuer" ParameterType="%AID%_PT-HomeKeyIssuer" Text="Issuer-ID (16 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="497" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00162" Name="Authorization16Endpoint" ParameterType="%AID%_PT-HomeKeyEndpoint" Text="Endpoint-ID (12 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="514" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00163" Name="Authorization16AccessId" ParameterType="%AID%_PT-HomeKeyAccessId" Text="Logische NFC-Aktions-ID" Value="0"><Memory CodeSegment="%MID%" Offset="527" BitOffset="0" /></Parameter>
         </Parameters>
         <ParameterRefs>
           <ParameterRef Id="%AID%_UP-%TT%00001_R-%TT%0000101" RefId="%AID%_UP-%TT%00001" />
           <ParameterRef Id="%AID%_UP-%TT%00002_R-%TT%0000201" RefId="%AID%_UP-%TT%00002" />
           <ParameterRef Id="%AID%_UP-%TT%00003_R-%TT%0000301" RefId="%AID%_UP-%TT%00003" />
+          <ParameterRef Id="%AID%_UP-%TT%00004_R-%TT%0000401" RefId="%AID%_UP-%TT%00004" />
+          <ParameterRef Id="%AID%_P-%TT%00100_R-%TT%0010001" RefId="%AID%_P-%TT%00100" />
+          <ParameterRef Id="%AID%_P-%TT%00101_R-%TT%0010101" RefId="%AID%_P-%TT%00101" />
+          <ParameterRef Id="%AID%_P-%TT%00102_R-%TT%0010201" RefId="%AID%_P-%TT%00102" />
+          <ParameterRef Id="%AID%_P-%TT%00103_R-%TT%0010301" RefId="%AID%_P-%TT%00103" />
+          <ParameterRef Id="%AID%_P-%TT%00104_R-%TT%0010401" RefId="%AID%_P-%TT%00104" />
+          <ParameterRef Id="%AID%_P-%TT%00105_R-%TT%0010501" RefId="%AID%_P-%TT%00105" />
+          <ParameterRef Id="%AID%_P-%TT%00106_R-%TT%0010601" RefId="%AID%_P-%TT%00106" />
+          <ParameterRef Id="%AID%_P-%TT%00107_R-%TT%0010701" RefId="%AID%_P-%TT%00107" />
+          <ParameterRef Id="%AID%_P-%TT%00108_R-%TT%0010801" RefId="%AID%_P-%TT%00108" />
+          <ParameterRef Id="%AID%_P-%TT%00109_R-%TT%0010901" RefId="%AID%_P-%TT%00109" />
+          <ParameterRef Id="%AID%_P-%TT%00110_R-%TT%0011001" RefId="%AID%_P-%TT%00110" />
+          <ParameterRef Id="%AID%_P-%TT%00111_R-%TT%0011101" RefId="%AID%_P-%TT%00111" />
+          <ParameterRef Id="%AID%_P-%TT%00112_R-%TT%0011201" RefId="%AID%_P-%TT%00112" />
+          <ParameterRef Id="%AID%_P-%TT%00113_R-%TT%0011301" RefId="%AID%_P-%TT%00113" />
+          <ParameterRef Id="%AID%_P-%TT%00114_R-%TT%0011401" RefId="%AID%_P-%TT%00114" />
+          <ParameterRef Id="%AID%_P-%TT%00115_R-%TT%0011501" RefId="%AID%_P-%TT%00115" />
+          <ParameterRef Id="%AID%_P-%TT%00116_R-%TT%0011601" RefId="%AID%_P-%TT%00116" />
+          <ParameterRef Id="%AID%_P-%TT%00117_R-%TT%0011701" RefId="%AID%_P-%TT%00117" />
+          <ParameterRef Id="%AID%_P-%TT%00118_R-%TT%0011801" RefId="%AID%_P-%TT%00118" />
+          <ParameterRef Id="%AID%_P-%TT%00119_R-%TT%0011901" RefId="%AID%_P-%TT%00119" />
+          <ParameterRef Id="%AID%_P-%TT%00120_R-%TT%0012001" RefId="%AID%_P-%TT%00120" />
+          <ParameterRef Id="%AID%_P-%TT%00121_R-%TT%0012101" RefId="%AID%_P-%TT%00121" />
+          <ParameterRef Id="%AID%_P-%TT%00122_R-%TT%0012201" RefId="%AID%_P-%TT%00122" />
+          <ParameterRef Id="%AID%_P-%TT%00123_R-%TT%0012301" RefId="%AID%_P-%TT%00123" />
+          <ParameterRef Id="%AID%_P-%TT%00124_R-%TT%0012401" RefId="%AID%_P-%TT%00124" />
+          <ParameterRef Id="%AID%_P-%TT%00125_R-%TT%0012501" RefId="%AID%_P-%TT%00125" />
+          <ParameterRef Id="%AID%_P-%TT%00126_R-%TT%0012601" RefId="%AID%_P-%TT%00126" />
+          <ParameterRef Id="%AID%_P-%TT%00127_R-%TT%0012701" RefId="%AID%_P-%TT%00127" />
+          <ParameterRef Id="%AID%_P-%TT%00128_R-%TT%0012801" RefId="%AID%_P-%TT%00128" />
+          <ParameterRef Id="%AID%_P-%TT%00129_R-%TT%0012901" RefId="%AID%_P-%TT%00129" />
+          <ParameterRef Id="%AID%_P-%TT%00130_R-%TT%0013001" RefId="%AID%_P-%TT%00130" />
+          <ParameterRef Id="%AID%_P-%TT%00131_R-%TT%0013101" RefId="%AID%_P-%TT%00131" />
+          <ParameterRef Id="%AID%_P-%TT%00132_R-%TT%0013201" RefId="%AID%_P-%TT%00132" />
+          <ParameterRef Id="%AID%_P-%TT%00133_R-%TT%0013301" RefId="%AID%_P-%TT%00133" />
+          <ParameterRef Id="%AID%_P-%TT%00134_R-%TT%0013401" RefId="%AID%_P-%TT%00134" />
+          <ParameterRef Id="%AID%_P-%TT%00135_R-%TT%0013501" RefId="%AID%_P-%TT%00135" />
+          <ParameterRef Id="%AID%_P-%TT%00136_R-%TT%0013601" RefId="%AID%_P-%TT%00136" />
+          <ParameterRef Id="%AID%_P-%TT%00137_R-%TT%0013701" RefId="%AID%_P-%TT%00137" />
+          <ParameterRef Id="%AID%_P-%TT%00138_R-%TT%0013801" RefId="%AID%_P-%TT%00138" />
+          <ParameterRef Id="%AID%_P-%TT%00139_R-%TT%0013901" RefId="%AID%_P-%TT%00139" />
+          <ParameterRef Id="%AID%_P-%TT%00140_R-%TT%0014001" RefId="%AID%_P-%TT%00140" />
+          <ParameterRef Id="%AID%_P-%TT%00141_R-%TT%0014101" RefId="%AID%_P-%TT%00141" />
+          <ParameterRef Id="%AID%_P-%TT%00142_R-%TT%0014201" RefId="%AID%_P-%TT%00142" />
+          <ParameterRef Id="%AID%_P-%TT%00143_R-%TT%0014301" RefId="%AID%_P-%TT%00143" />
+          <ParameterRef Id="%AID%_P-%TT%00144_R-%TT%0014401" RefId="%AID%_P-%TT%00144" />
+          <ParameterRef Id="%AID%_P-%TT%00145_R-%TT%0014501" RefId="%AID%_P-%TT%00145" />
+          <ParameterRef Id="%AID%_P-%TT%00146_R-%TT%0014601" RefId="%AID%_P-%TT%00146" />
+          <ParameterRef Id="%AID%_P-%TT%00147_R-%TT%0014701" RefId="%AID%_P-%TT%00147" />
+          <ParameterRef Id="%AID%_P-%TT%00148_R-%TT%0014801" RefId="%AID%_P-%TT%00148" />
+          <ParameterRef Id="%AID%_P-%TT%00149_R-%TT%0014901" RefId="%AID%_P-%TT%00149" />
+          <ParameterRef Id="%AID%_P-%TT%00150_R-%TT%0015001" RefId="%AID%_P-%TT%00150" />
+          <ParameterRef Id="%AID%_P-%TT%00151_R-%TT%0015101" RefId="%AID%_P-%TT%00151" />
+          <ParameterRef Id="%AID%_P-%TT%00152_R-%TT%0015201" RefId="%AID%_P-%TT%00152" />
+          <ParameterRef Id="%AID%_P-%TT%00153_R-%TT%0015301" RefId="%AID%_P-%TT%00153" />
+          <ParameterRef Id="%AID%_P-%TT%00154_R-%TT%0015401" RefId="%AID%_P-%TT%00154" />
+          <ParameterRef Id="%AID%_P-%TT%00155_R-%TT%0015501" RefId="%AID%_P-%TT%00155" />
+          <ParameterRef Id="%AID%_P-%TT%00156_R-%TT%0015601" RefId="%AID%_P-%TT%00156" />
+          <ParameterRef Id="%AID%_P-%TT%00157_R-%TT%0015701" RefId="%AID%_P-%TT%00157" />
+          <ParameterRef Id="%AID%_P-%TT%00158_R-%TT%0015801" RefId="%AID%_P-%TT%00158" />
+          <ParameterRef Id="%AID%_P-%TT%00159_R-%TT%0015901" RefId="%AID%_P-%TT%00159" />
+          <ParameterRef Id="%AID%_P-%TT%00160_R-%TT%0016001" RefId="%AID%_P-%TT%00160" />
+          <ParameterRef Id="%AID%_P-%TT%00161_R-%TT%0016101" RefId="%AID%_P-%TT%00161" />
+          <ParameterRef Id="%AID%_P-%TT%00162_R-%TT%0016201" RefId="%AID%_P-%TT%00162" />
+          <ParameterRef Id="%AID%_P-%TT%00163_R-%TT%0016301" RefId="%AID%_P-%TT%00163" />
         </ParameterRefs>
         <ComObjectTable>
           <ComObject Id="%AID%_O-%TT%00001" Name="LockFeedback" Number="0" ObjectSize="1 Bit" Text="Physische Verriegelung" FunctionText="Home Key: 1=verriegelt" ReadFlag="Disabled" WriteFlag="Enabled" CommunicationFlag="Enabled" TransmitFlag="Disabled" UpdateFlag="Enabled" ReadOnInitFlag="Enabled" DatapointType="DPST-1-1" />
+          <ComObject Id="%AID%_O-%TT%00002" Name="CommissioningControl" Number="1" ObjectSize="1 Bit" Text="Inbetriebnahme: 1=5 Minuten öffnen, 0=schließen" FunctionText="Home Key" ReadFlag="Disabled" WriteFlag="Enabled" CommunicationFlag="Enabled" TransmitFlag="Disabled" UpdateFlag="Disabled" ReadOnInitFlag="Disabled" DatapointType="DPST-1-1" />
+          <ComObject Id="%AID%_O-%TT%00003" Name="CommissioningOpen" Number="2" ObjectSize="1 Bit" Text="Inbetriebnahme geöffnet" FunctionText="Home Key" ReadFlag="Enabled" WriteFlag="Disabled" CommunicationFlag="Enabled" TransmitFlag="Enabled" UpdateFlag="Disabled" ReadOnInitFlag="Disabled" DatapointType="DPST-1-1" />
+          <ComObject Id="%AID%_O-%TT%00004" Name="AuthorizationStatus" Number="3" ObjectSize="1 Byte" Text="Berechtigungstabelle: Status" FunctionText="Home Key" ReadFlag="Enabled" WriteFlag="Disabled" CommunicationFlag="Enabled" TransmitFlag="Enabled" UpdateFlag="Disabled" ReadOnInitFlag="Disabled" DatapointType="DPST-5-10" />
+          <ComObject Id="%AID%_O-%TT%00005" Name="EndpointIndex" Number="49" ObjectSize="1 Byte" Text="Provisionierten Endpoint auswählen (0..63)" FunctionText="Home Key" ReadFlag="Disabled" WriteFlag="Enabled" CommunicationFlag="Enabled" TransmitFlag="Disabled" UpdateFlag="Disabled" ReadOnInitFlag="Disabled" DatapointType="DPST-5-10" />
+          <ComObject Id="%AID%_O-%TT%00006" Name="IssuerHigh" Number="50" ObjectSize="14 Bytes" Text="Issuer-ID: erste 8 Hex-Zeichen" FunctionText="Home Key" ReadFlag="Enabled" WriteFlag="Disabled" CommunicationFlag="Enabled" TransmitFlag="Enabled" UpdateFlag="Disabled" ReadOnInitFlag="Disabled" DatapointType="DPST-16-0" />
+          <ComObject Id="%AID%_O-%TT%00007" Name="IssuerLow" Number="51" ObjectSize="14 Bytes" Text="Issuer-ID: letzte 8 Hex-Zeichen" FunctionText="Home Key" ReadFlag="Enabled" WriteFlag="Disabled" CommunicationFlag="Enabled" TransmitFlag="Enabled" UpdateFlag="Disabled" ReadOnInitFlag="Disabled" DatapointType="DPST-16-0" />
+          <ComObject Id="%AID%_O-%TT%00008" Name="EndpointId" Number="52" ObjectSize="14 Bytes" Text="Endpoint-ID: 12 Hex-Zeichen" FunctionText="Home Key" ReadFlag="Enabled" WriteFlag="Disabled" CommunicationFlag="Enabled" TransmitFlag="Enabled" UpdateFlag="Disabled" ReadOnInitFlag="Disabled" DatapointType="DPST-16-0" />
+          <ComObject Id="%AID%_O-%TT%00009" Name="CommissioningResult" Number="53" ObjectSize="1 Byte" Text="Inbetriebnahme: Befehlsergebnis" FunctionText="Home Key" ReadFlag="Enabled" WriteFlag="Disabled" CommunicationFlag="Enabled" TransmitFlag="Enabled" UpdateFlag="Disabled" ReadOnInitFlag="Disabled" DatapointType="DPST-5-10" />
         </ComObjectTable>
         <ComObjectRefs>
           <ComObjectRef Id="%AID%_O-%TT%00001_R-%TT%0000101" RefId="%AID%_O-%TT%00001" />
+          <ComObjectRef Id="%AID%_O-%TT%00002_R-%TT%0000201" RefId="%AID%_O-%TT%00002" />
+          <ComObjectRef Id="%AID%_O-%TT%00003_R-%TT%0000301" RefId="%AID%_O-%TT%00003" />
+          <ComObjectRef Id="%AID%_O-%TT%00004_R-%TT%0000401" RefId="%AID%_O-%TT%00004" />
+          <ComObjectRef Id="%AID%_O-%TT%00005_R-%TT%0000501" RefId="%AID%_O-%TT%00005" />
+          <ComObjectRef Id="%AID%_O-%TT%00006_R-%TT%0000601" RefId="%AID%_O-%TT%00006" />
+          <ComObjectRef Id="%AID%_O-%TT%00007_R-%TT%0000701" RefId="%AID%_O-%TT%00007" />
+          <ComObjectRef Id="%AID%_O-%TT%00008_R-%TT%0000801" RefId="%AID%_O-%TT%00008" />
+          <ComObjectRef Id="%AID%_O-%TT%00009_R-%TT%0000901" RefId="%AID%_O-%TT%00009" />
         </ComObjectRefs>
       </Static>
       <Dynamic>
@@ -39,7 +188,114 @@
               <ParameterRefRef RefId="%AID%_UP-%TT%00002_R-%TT%0000201" />
               <ParameterRefRef RefId="%AID%_UP-%TT%00003_R-%TT%0000301" />
               <ComObjectRefRef RefId="%AID%_O-%TT%00001_R-%TT%0000101" />
-              <ParameterSeparator Id="%AID%_PS-nnn" Text="Home-Key-Berechtigungen werden lokal nach kryptografischer Identifikation vergeben. HomeKit-Kopplung allein gewährt keinen Zutritt." />
+              <ParameterSeparator Id="%AID%_PS-nnn" Text="Setup-Code einmal lokal mit hk code setzen. HomeKit-Kopplung allein gewährt keinen Zutritt. Endpoint-IDs sind über die Kommunikationsobjekte auslesbar." />
+              <ComObjectRefRef RefId="%AID%_O-%TT%00002_R-%TT%0000201" />
+              <ComObjectRefRef RefId="%AID%_O-%TT%00003_R-%TT%0000301" />
+              <ComObjectRefRef RefId="%AID%_O-%TT%00004_R-%TT%0000401" />
+              <ComObjectRefRef RefId="%AID%_O-%TT%00005_R-%TT%0000501" />
+              <ComObjectRefRef RefId="%AID%_O-%TT%00006_R-%TT%0000601" />
+              <ComObjectRefRef RefId="%AID%_O-%TT%00007_R-%TT%0000701" />
+              <ComObjectRefRef RefId="%AID%_O-%TT%00008_R-%TT%0000801" />
+              <ComObjectRefRef RefId="%AID%_O-%TT%00009_R-%TT%0000901" />
+              <ParameterRefRef RefId="%AID%_UP-%TT%00004_R-%TT%0000401" />
+              <choose ParamRefId="%AID%_UP-%TT%00004_R-%TT%0000401"><when test="1">
+              <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 1">
+                <ParameterRefRef RefId="%AID%_P-%TT%00100_R-%TT%0010001" />
+                <choose ParamRefId="%AID%_P-%TT%00100_R-%TT%0010001"><when test="1">
+                  <ParameterRefRef RefId="%AID%_P-%TT%00101_R-%TT%0010101" /><ParameterRefRef RefId="%AID%_P-%TT%00102_R-%TT%0010201" /><ParameterRefRef RefId="%AID%_P-%TT%00103_R-%TT%0010301" />
+                </when></choose>
+              </ParameterBlock>
+              <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 2">
+                <ParameterRefRef RefId="%AID%_P-%TT%00104_R-%TT%0010401" />
+                <choose ParamRefId="%AID%_P-%TT%00104_R-%TT%0010401"><when test="1">
+                  <ParameterRefRef RefId="%AID%_P-%TT%00105_R-%TT%0010501" /><ParameterRefRef RefId="%AID%_P-%TT%00106_R-%TT%0010601" /><ParameterRefRef RefId="%AID%_P-%TT%00107_R-%TT%0010701" />
+                </when></choose>
+              </ParameterBlock>
+              <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 3">
+                <ParameterRefRef RefId="%AID%_P-%TT%00108_R-%TT%0010801" />
+                <choose ParamRefId="%AID%_P-%TT%00108_R-%TT%0010801"><when test="1">
+                  <ParameterRefRef RefId="%AID%_P-%TT%00109_R-%TT%0010901" /><ParameterRefRef RefId="%AID%_P-%TT%00110_R-%TT%0011001" /><ParameterRefRef RefId="%AID%_P-%TT%00111_R-%TT%0011101" />
+                </when></choose>
+              </ParameterBlock>
+              <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 4">
+                <ParameterRefRef RefId="%AID%_P-%TT%00112_R-%TT%0011201" />
+                <choose ParamRefId="%AID%_P-%TT%00112_R-%TT%0011201"><when test="1">
+                  <ParameterRefRef RefId="%AID%_P-%TT%00113_R-%TT%0011301" /><ParameterRefRef RefId="%AID%_P-%TT%00114_R-%TT%0011401" /><ParameterRefRef RefId="%AID%_P-%TT%00115_R-%TT%0011501" />
+                </when></choose>
+              </ParameterBlock>
+              <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 5">
+                <ParameterRefRef RefId="%AID%_P-%TT%00116_R-%TT%0011601" />
+                <choose ParamRefId="%AID%_P-%TT%00116_R-%TT%0011601"><when test="1">
+                  <ParameterRefRef RefId="%AID%_P-%TT%00117_R-%TT%0011701" /><ParameterRefRef RefId="%AID%_P-%TT%00118_R-%TT%0011801" /><ParameterRefRef RefId="%AID%_P-%TT%00119_R-%TT%0011901" />
+                </when></choose>
+              </ParameterBlock>
+              <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 6">
+                <ParameterRefRef RefId="%AID%_P-%TT%00120_R-%TT%0012001" />
+                <choose ParamRefId="%AID%_P-%TT%00120_R-%TT%0012001"><when test="1">
+                  <ParameterRefRef RefId="%AID%_P-%TT%00121_R-%TT%0012101" /><ParameterRefRef RefId="%AID%_P-%TT%00122_R-%TT%0012201" /><ParameterRefRef RefId="%AID%_P-%TT%00123_R-%TT%0012301" />
+                </when></choose>
+              </ParameterBlock>
+              <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 7">
+                <ParameterRefRef RefId="%AID%_P-%TT%00124_R-%TT%0012401" />
+                <choose ParamRefId="%AID%_P-%TT%00124_R-%TT%0012401"><when test="1">
+                  <ParameterRefRef RefId="%AID%_P-%TT%00125_R-%TT%0012501" /><ParameterRefRef RefId="%AID%_P-%TT%00126_R-%TT%0012601" /><ParameterRefRef RefId="%AID%_P-%TT%00127_R-%TT%0012701" />
+                </when></choose>
+              </ParameterBlock>
+              <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 8">
+                <ParameterRefRef RefId="%AID%_P-%TT%00128_R-%TT%0012801" />
+                <choose ParamRefId="%AID%_P-%TT%00128_R-%TT%0012801"><when test="1">
+                  <ParameterRefRef RefId="%AID%_P-%TT%00129_R-%TT%0012901" /><ParameterRefRef RefId="%AID%_P-%TT%00130_R-%TT%0013001" /><ParameterRefRef RefId="%AID%_P-%TT%00131_R-%TT%0013101" />
+                </when></choose>
+              </ParameterBlock>
+              <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 9">
+                <ParameterRefRef RefId="%AID%_P-%TT%00132_R-%TT%0013201" />
+                <choose ParamRefId="%AID%_P-%TT%00132_R-%TT%0013201"><when test="1">
+                  <ParameterRefRef RefId="%AID%_P-%TT%00133_R-%TT%0013301" /><ParameterRefRef RefId="%AID%_P-%TT%00134_R-%TT%0013401" /><ParameterRefRef RefId="%AID%_P-%TT%00135_R-%TT%0013501" />
+                </when></choose>
+              </ParameterBlock>
+              <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 10">
+                <ParameterRefRef RefId="%AID%_P-%TT%00136_R-%TT%0013601" />
+                <choose ParamRefId="%AID%_P-%TT%00136_R-%TT%0013601"><when test="1">
+                  <ParameterRefRef RefId="%AID%_P-%TT%00137_R-%TT%0013701" /><ParameterRefRef RefId="%AID%_P-%TT%00138_R-%TT%0013801" /><ParameterRefRef RefId="%AID%_P-%TT%00139_R-%TT%0013901" />
+                </when></choose>
+              </ParameterBlock>
+              <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 11">
+                <ParameterRefRef RefId="%AID%_P-%TT%00140_R-%TT%0014001" />
+                <choose ParamRefId="%AID%_P-%TT%00140_R-%TT%0014001"><when test="1">
+                  <ParameterRefRef RefId="%AID%_P-%TT%00141_R-%TT%0014101" /><ParameterRefRef RefId="%AID%_P-%TT%00142_R-%TT%0014201" /><ParameterRefRef RefId="%AID%_P-%TT%00143_R-%TT%0014301" />
+                </when></choose>
+              </ParameterBlock>
+              <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 12">
+                <ParameterRefRef RefId="%AID%_P-%TT%00144_R-%TT%0014401" />
+                <choose ParamRefId="%AID%_P-%TT%00144_R-%TT%0014401"><when test="1">
+                  <ParameterRefRef RefId="%AID%_P-%TT%00145_R-%TT%0014501" /><ParameterRefRef RefId="%AID%_P-%TT%00146_R-%TT%0014601" /><ParameterRefRef RefId="%AID%_P-%TT%00147_R-%TT%0014701" />
+                </when></choose>
+              </ParameterBlock>
+              <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 13">
+                <ParameterRefRef RefId="%AID%_P-%TT%00148_R-%TT%0014801" />
+                <choose ParamRefId="%AID%_P-%TT%00148_R-%TT%0014801"><when test="1">
+                  <ParameterRefRef RefId="%AID%_P-%TT%00149_R-%TT%0014901" /><ParameterRefRef RefId="%AID%_P-%TT%00150_R-%TT%0015001" /><ParameterRefRef RefId="%AID%_P-%TT%00151_R-%TT%0015101" />
+                </when></choose>
+              </ParameterBlock>
+              <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 14">
+                <ParameterRefRef RefId="%AID%_P-%TT%00152_R-%TT%0015201" />
+                <choose ParamRefId="%AID%_P-%TT%00152_R-%TT%0015201"><when test="1">
+                  <ParameterRefRef RefId="%AID%_P-%TT%00153_R-%TT%0015301" /><ParameterRefRef RefId="%AID%_P-%TT%00154_R-%TT%0015401" /><ParameterRefRef RefId="%AID%_P-%TT%00155_R-%TT%0015501" />
+                </when></choose>
+              </ParameterBlock>
+              <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 15">
+                <ParameterRefRef RefId="%AID%_P-%TT%00156_R-%TT%0015601" />
+                <choose ParamRefId="%AID%_P-%TT%00156_R-%TT%0015601"><when test="1">
+                  <ParameterRefRef RefId="%AID%_P-%TT%00157_R-%TT%0015701" /><ParameterRefRef RefId="%AID%_P-%TT%00158_R-%TT%0015801" /><ParameterRefRef RefId="%AID%_P-%TT%00159_R-%TT%0015901" />
+                </when></choose>
+              </ParameterBlock>
+              <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 16">
+                <ParameterRefRef RefId="%AID%_P-%TT%00160_R-%TT%0016001" />
+                <choose ParamRefId="%AID%_P-%TT%00160_R-%TT%0016001"><when test="1">
+                  <ParameterRefRef RefId="%AID%_P-%TT%00161_R-%TT%0016101" /><ParameterRefRef RefId="%AID%_P-%TT%00162_R-%TT%0016201" /><ParameterRefRef RefId="%AID%_P-%TT%00163_R-%TT%0016301" />
+                </when></choose>
+              </ParameterBlock>
+              </when></choose>
             </when></choose>
           </ParameterBlock>
         </Channel>

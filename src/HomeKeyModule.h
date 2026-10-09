@@ -22,6 +22,8 @@ class HomeKeyModule : public OpenKNX::Module
     void processBeforeRestart() override { enabled = false; cancelCommissioning(); }
     bool processCommand(const std::string cmd, bool diagnoseKo) override;
     bool pairingAllowed() const;
+    bool processFunctionProperty(uint8_t object, uint8_t property, uint8_t length, uint8_t* data, uint8_t* result, uint8_t& resultLength) override;
+    bool processFunctionPropertyState(uint8_t object, uint8_t property, uint8_t length, uint8_t* data, uint8_t* result, uint8_t& resultLength) override;
     HomeKeyCredentialStore store;
   private:
     friend class HomeKeyProvisioning;
@@ -46,6 +48,8 @@ class HomeKeyModule : public OpenKNX::Module
         return policyLoaded ? HomeKey::authorizedId(etsAuthorization, etsTableValid, store.mappings, etsMappings, issuer, endpoint) : HomeKey::InvalidId;
     }
     void updateStatus();
+    uint8_t authorizationStatus();
+    uint8_t requestCommissioning(bool open);
     void publishEndpoint();
     std::atomic<bool> policyLoaded{false};
     bool etsAuthorization = false;

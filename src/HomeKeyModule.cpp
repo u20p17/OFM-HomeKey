@@ -1,6 +1,7 @@
 #if defined(OPENKNX_HOMEKEY_ENABLED) && defined(ARDUINO_ARCH_ESP32)
 #include "HomeKeyModule.h"
 #include "HomeKeyProvisioning.h"
+#include "HomeKeyOnline.h"
 #include "Pn7160Reader.hpp"
 #include "AccessControl.h"
 #include <algorithm>
@@ -180,14 +181,7 @@ void HomeKeyModule::processInputKo(GroupObject& ko)
         provisioning->feedback(ko.value(DPT_Switch));
     else if (ko.asap() == HK_KoCommissioningControl)
     {
-        if (!ko.value(DPT_Switch)) { cancelCommissioning(); commissioningResult = 2; }
-        else if (!started || !enabled || !ParamHK_PairingPermitted) commissioningResult = 3;
-        else
-        {
-            uint32_t deadline = pairingUntil.load();
-            if (deadline && !HomeKey::windowOpen(millis(), deadline)) cancelCommissioning();
-            if (!provisioning->openPairingWindow()) commissioningResult = 5;
-        }
+        requestCommissioning(ko.value(DPT_Switch));
     }
     else if (ko.asap() == HK_KoEndpointIndex)
     {
@@ -228,15 +222,82 @@ void HomeKeyModule::updateStatus()
     std::unique_lock<std::recursive_mutex> guard(store.mutex, std::try_to_lock);
     if (!guard.owns_lock()) return; // Never wait for an APDU or credential write on the KNX thread.
     statusAt = millis();
-    int status = (!store.healthy || fatal) ? 6 : !enabled ? 0 : !etsAuthorization ? 1 : !etsTableValid ? 3 : 2;
+    uint8_t status = authorizationStatus();
+    if (status != reportedAuthorization) { KoHK_AuthorizationStatus.value(uint8_t(status), DPT_Value_1_Ucount); reportedAuthorization = status; }
+    if (endpointDirty || inspectedGeneration != store.generation) publishEndpoint();
+}
+
+uint8_t HomeKeyModule::authorizationStatus()
+{
+    uint8_t status = (!store.healthy || fatal) ? 6 : !enabled ? 0 : !etsAuthorization ? 1 : !etsTableValid ? 3 : 2;
     if (status == 2)
         for (const auto& mapping : etsMappings)
         {
             if (!openknxAccessControl.homeKeyAccessIdAvailable(mapping.accessId)) { status = 5; break; }
             if (!store.contains(mapping.issuer, mapping.endpoint)) status = 4;
         }
-    if (status != reportedAuthorization) { KoHK_AuthorizationStatus.value(uint8_t(status), DPT_Value_1_Ucount); reportedAuthorization = status; }
-    if (endpointDirty || inspectedGeneration != store.generation) publishEndpoint();
+    return status;
+}
+
+uint8_t HomeKeyModule::requestCommissioning(bool open)
+{
+    if (!open) { cancelCommissioning(); commissioningResult = 2; return HomeKeyOnline::Ok; }
+    if (!started || !enabled) { commissioningResult = 3; return HomeKeyOnline::Disabled; }
+    if (!ParamHK_PairingPermitted) { commissioningResult = 3; return HomeKeyOnline::NotPermitted; }
+    uint32_t deadline = pairingUntil.load();
+    if (deadline && !HomeKey::windowOpen(millis(), deadline)) cancelCommissioning();
+    commissioningResult = 7; // Pending: the worker publishes the terminal result.
+    if (!provisioning->openPairingWindow()) { commissioningResult = 5; return HomeKeyOnline::QueueBusy; }
+    return HomeKeyOnline::Ok;
+}
+
+bool HomeKeyModule::processFunctionProperty(uint8_t object, uint8_t property, uint8_t length, uint8_t* data, uint8_t* result, uint8_t& resultLength)
+{
+    if (object != HomeKeyOnline::Object || property != HomeKeyOnline::Property) return false;
+    result[0] = HomeKeyOnline::Invalid; result[1] = HomeKeyOnline::Version; resultLength = 2;
+    HomeKeyOnline::Request request;
+    if (!HomeKeyOnline::decode(data, length, request)) return true;
+    if (!knx.configured()) { result[0] = HomeKeyOnline::Unconfigured; return true; }
+    if (request.command == 1 || request.command == 2)
+    {
+        result[0] = requestCommissioning(request.command == 1);
+        return true;
+    }
+    std::unique_lock<std::recursive_mutex> guard(store.mutex, std::try_to_lock);
+    if (!guard.owns_lock()) { result[0] = HomeKeyOnline::Busy; return true; }
+    if (!store.healthy || fatal) { result[0] = HomeKeyOnline::Unavailable; return true; }
+    uint8_t count = 0;
+    for (const auto& issuer : store.entries) count += issuer.endpoints.size();
+    if (request.command == 0)
+    {
+        resultLength = HomeKeyOnline::status(result, enabled, pairingPermitted, pairingAllowed(), commissioningResult,
+                                             authorizationStatus(), count, store.generation);
+        return true;
+    }
+    if (request.generation != store.generation) { result[0] = HomeKeyOnline::Stale; return true; }
+    uint8_t index = 0;
+    for (const auto& issuer : store.entries)
+        for (const auto& item : issuer.endpoints)
+        {
+            if (index++ != request.index) continue;
+            if (issuer.id.size() != 8 || item.id.size() != 6) { result[0] = HomeKeyOnline::Unavailable; return true; }
+            resultLength = HomeKeyOnline::endpoint(result, request.index, count, store.generation, issuer.id.data(), item.id.data());
+            return true;
+        }
+    result[0] = HomeKeyOnline::NotFound;
+    return true;
+}
+
+bool HomeKeyModule::processFunctionPropertyState(uint8_t object, uint8_t property, uint8_t length, uint8_t* data, uint8_t* result, uint8_t& resultLength)
+{
+    if (object != HomeKeyOnline::Object || property != HomeKeyOnline::Property) return false;
+    HomeKeyOnline::Request request;
+    if (!HomeKeyOnline::decode(data, length, request) || (request.command != 0 && request.command != 3))
+    {
+        result[0] = HomeKeyOnline::Invalid; result[1] = HomeKeyOnline::Version; resultLength = 2;
+        return true;
+    }
+    return processFunctionProperty(object, property, length, data, result, resultLength);
 }
 
 namespace

@@ -1,4 +1,4 @@
-# OFM-HomeKey 0.2.0
+# OFM-HomeKey 0.3.0
 
 Local ESP32 prototype for OAM-AccessControl, on `v1dev_HomeKey`.
 No remote repository or publication is created. The application records this
@@ -62,7 +62,7 @@ store and selection/mapping policy; they do not simulate an Apple credential.
 ## Commissioning from ETS
 
 Use OAM's `debug_ESP32S3_AppleHomeKey` target and the matching development
-application A6/02 version 0.2 / header. Existing version 0.1 downloads need the
+application A6/02 version 0.3 / header. Existing version 0.1/0.2 downloads need the
 new application because the parameter table and communication objects changed.
 Enable Home Key and `NFC-Inbetriebnahme über USB/KNX erlauben` in ETS.
 Set network credentials and a private setup code once at the local USB console:
@@ -76,7 +76,24 @@ Choose a code that is neither repeated digits nor 12345678/87654321. Wait until
 the HAP worker is ready; retry if a command reports busy. The code is persisted
 on that worker. A successful `hk code` does not open commissioning.
 
-Assign group addresses to the following objects and use ETS Group Monitor:
+Use the ETS parameter-page buttons `Pairing öffnen (5 Minuten)`, `Pairing
+schließen` and `Status aktualisieren`. They connect to the device through the
+ETS KNX interface using its individual address; no group addresses or Wi-Fi
+transport are required. The open button waits for the worker's actual result;
+a rejected/canceled request is reported and an accepted request is closed on
+failure. The permit and stored private setup code remain mandatory.
+
+After provisioning, select `Berechtigungen aus ETS-Tabelle` = Yes and press
+`Provisionierte Geräte-IDs importieren`. The script reads a consistent snapshot
+of public issuer/endpoint IDs into completely empty rows of the 16-row table.
+It preserves populated/partial rows and existing rights, deduplicates full IDs,
+and aborts before writing if there is insufficient space or the snapshot changes
+repeatedly. Imported rows stay disabled with action ID 0. Select an unused NFC
+action ID, configure its NFCACT action, enable the row and download to authorize
+it. Importing IDs alone grants no access. No private keys/setup codes are read.
+The online status field records the last query and is refreshed on demand.
+
+Group Monitor remains an alternative. Assign addresses to these objects:
 
 | KO | Function | DPT |
 | --- | --- | --- |
@@ -188,3 +205,28 @@ selection downgrade denial, mappings/collisions, reboot persistence,
 endpoint/identity revocation, stale-event generation, corrupt/truncated storage,
 failed NVS commits and reset. HomeSpan/NVS commissioning commands and real KNX
 telegram timing still require device testing.
+
+## ETS online protocol and script tests
+
+The module exposes function property object 165/property 3 through the unchanged
+OGM-Common wrapper (object 158/property 3), including response fragmentation for
+small APDUs. Requests: `0` status, `1` open, `2` close, or `3,index,generationBE32`
+for an endpoint. Replies start with result/version (protocol version 1). Status
+is 12 bytes: result, version, enabled, permitted, open, commissioning result,
+authorization status, endpoint count, generation BE32. Endpoint is 22 bytes:
+result, version, index, count, generation BE32, issuer ID (8), endpoint ID (6).
+Busy/stale snapshots retry; commissioning result 7 means the request is pending.
+Read-only function-property state requests cannot open/close commissioning.
+
+From OAM-AccessControl, run:
+
+```sh
+c++ -std=c++17 -Ilib/OFM-HomeKey/src lib/OFM-HomeKey/test/online_test.cpp -o /tmp/oam-homekey-online-test
+/tmp/oam-homekey-online-test
+/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc lib/OFM-HomeKey/test/ets_script_test.js
+```
+
+JavaScript tests mock the ETS device/online APIs, cover preservation, cancellation,
+capacity, rollback and changing snapshots, and exercise the real Common wrapper
+at 15-byte APDU size. ETS on Windows and physical KNX/Apple provisioning still
+require hardware validation.

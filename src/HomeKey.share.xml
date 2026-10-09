@@ -13,6 +13,7 @@
           <ParameterType Id="%AID%_PT-HomeKeyIssuer" Name="HomeKeyIssuer"><TypeText SizeInBit="136" /></ParameterType>
           <ParameterType Id="%AID%_PT-HomeKeyEndpoint" Name="HomeKeyEndpoint"><TypeText SizeInBit="104" /></ParameterType>
           <ParameterType Id="%AID%_PT-HomeKeyAccessId" Name="HomeKeyAccessId"><TypeNumber SizeInBit="16" Type="unsignedInt" minInclusive="0" maxInclusive="1499" /></ParameterType>
+          <ParameterType Id="%AID%_PT-HomeKeyOnlineStatus" Name="HomeKeyOnlineStatus"><TypeText SizeInBit="1600" /></ParameterType>
         </ParameterTypes>
         <Parameters>
           <Union SizeInBit="8">
@@ -86,6 +87,7 @@
           <Parameter Id="%AID%_P-%TT%00161" Name="Authorization16Issuer" ParameterType="%AID%_PT-HomeKeyIssuer" Text="Issuer-ID (16 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="497" BitOffset="0" /></Parameter>
           <Parameter Id="%AID%_P-%TT%00162" Name="Authorization16Endpoint" ParameterType="%AID%_PT-HomeKeyEndpoint" Text="Endpoint-ID (12 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="514" BitOffset="0" /></Parameter>
           <Parameter Id="%AID%_P-%TT%00163" Name="Authorization16AccessId" ParameterType="%AID%_PT-HomeKeyAccessId" Text="Logische NFC-Aktions-ID" Value="0"><Memory CodeSegment="%MID%" Offset="527" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00005" Name="OnlineStatus" ParameterType="%AID%_PT-HomeKeyOnlineStatus" Text="Letzte Online-Abfrage" Value="Noch nicht abgefragt"><Memory CodeSegment="%MID%" Offset="529" BitOffset="0" /></Parameter>
         </Parameters>
         <ParameterRefs>
           <ParameterRef Id="%AID%_UP-%TT%00001_R-%TT%0000101" RefId="%AID%_UP-%TT%00001" />
@@ -156,6 +158,7 @@
           <ParameterRef Id="%AID%_P-%TT%00161_R-%TT%0016101" RefId="%AID%_P-%TT%00161" />
           <ParameterRef Id="%AID%_P-%TT%00162_R-%TT%0016201" RefId="%AID%_P-%TT%00162" />
           <ParameterRef Id="%AID%_P-%TT%00163_R-%TT%0016301" RefId="%AID%_P-%TT%00163" />
+          <ParameterRef Id="%AID%_P-%TT%00005_R-%TT%0000501" RefId="%AID%_P-%TT%00005" Access="Read" />
         </ParameterRefs>
         <ComObjectTable>
           <ComObject Id="%AID%_O-%TT%00001" Name="LockFeedback" Number="0" ObjectSize="1 Bit" Text="Physische Verriegelung" FunctionText="Home Key: 1=verriegelt" ReadFlag="Disabled" WriteFlag="Enabled" CommunicationFlag="Enabled" TransmitFlag="Disabled" UpdateFlag="Enabled" ReadOnInitFlag="Enabled" DatapointType="DPST-1-1" />
@@ -179,6 +182,7 @@
           <ComObjectRef Id="%AID%_O-%TT%00008_R-%TT%0000801" RefId="%AID%_O-%TT%00008" />
           <ComObjectRef Id="%AID%_O-%TT%00009_R-%TT%0000901" RefId="%AID%_O-%TT%00009" />
         </ComObjectRefs>
+        <Script><op:include href="HomeKey.script.js" type="script" /></Script>
       </Static>
       <Dynamic>
         <Channel Id="%AID%_CH-%PREFIX%" Number="%PREFIX%" Name="Home Key" Text="Apple Home Key">
@@ -187,6 +191,10 @@
             <choose ParamRefId="%AID%_UP-%TT%00001_R-%TT%0000101"><when test="1">
               <ParameterRefRef RefId="%AID%_UP-%TT%00002_R-%TT%0000201" />
               <ParameterRefRef RefId="%AID%_UP-%TT%00003_R-%TT%0000301" />
+              <Button Id="%AID%_B-%TT%00001" Name="openPairing" Text="Pairing öffnen (5 Minuten)" EventHandler="HK_openPairing" EventHandlerOnline="ConnectionOriented" />
+              <Button Id="%AID%_B-%TT%00002" Name="closePairing" Text="Pairing schließen" EventHandler="HK_closePairing" EventHandlerOnline="ConnectionOriented" />
+              <Button Id="%AID%_B-%TT%00003" Name="refreshStatus" Text="Status aktualisieren" EventHandler="HK_refreshStatus" EventHandlerOnline="ConnectionOriented" />
+              <ParameterRefRef RefId="%AID%_P-%TT%00005_R-%TT%0000501" />
               <ComObjectRefRef RefId="%AID%_O-%TT%00001_R-%TT%0000101" />
               <ParameterSeparator Id="%AID%_PS-nnn" Text="Setup-Code einmal lokal mit hk code setzen. HomeKit-Kopplung allein gewährt keinen Zutritt. Endpoint-IDs sind über die Kommunikationsobjekte auslesbar." />
               <ComObjectRefRef RefId="%AID%_O-%TT%00002_R-%TT%0000201" />
@@ -199,6 +207,7 @@
               <ComObjectRefRef RefId="%AID%_O-%TT%00009_R-%TT%0000901" />
               <ParameterRefRef RefId="%AID%_UP-%TT%00004_R-%TT%0000401" />
               <choose ParamRefId="%AID%_UP-%TT%00004_R-%TT%0000401"><when test="1">
+              <Button Id="%AID%_B-%TT%00004" Name="importEndpoints" Text="Provisionierte Geräte-IDs importieren" EventHandler="HK_importEndpoints" EventHandlerOnline="ConnectionOriented" />
               <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 1">
                 <ParameterRefRef RefId="%AID%_P-%TT%00100_R-%TT%0010001" />
                 <choose ParamRefId="%AID%_P-%TT%00100_R-%TT%0010001"><when test="1">

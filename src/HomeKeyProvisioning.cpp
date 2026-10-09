@@ -117,7 +117,7 @@ void HomeKeyProvisioning::begin()
     new AccessoryInfo();
     new Characteristic::Identify(); new Characteristic::Manufacturer("OpenKNX");
     new Characteristic::Model("XIAO ESP32-S3 PN7161"); new Characteristic::Name("OpenKNX Home Key");
-    new Characteristic::FirmwareRevision("0.2.0");
+    new Characteristic::FirmwareRevision("0.3.0");
     uint8_t mac[6]; esp_read_mac(mac, ESP_MAC_WIFI_STA);
     char serial[13]; snprintf(serial, sizeof(serial), "%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
     new Characteristic::SerialNumber(serial);

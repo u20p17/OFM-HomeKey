@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<KNX xmlns="http://knx.org/xml/project/20" xmlns:op="http://github.com/OpenKNX/OpenKNXproducer">
+  <ManufacturerData><Manufacturer RefId="M-00FA"><ApplicationPrograms>
+    <ApplicationProgram Id="%AID%" ProgramType="ApplicationProgram" MaskVersion="MV-07B0" Name="Home Key" LoadProcedureStyle="MergedProcedure" PeiType="0" DefaultLanguage="de" DynamicTableManagement="false" Linkable="true" MinEtsVersion="5.7" ApplicationNumber="0" ApplicationVersion="0" ReplacesVersions="0">
+      <Static>
+        <ParameterTypes>
+          <ParameterType Id="%AID%_PT-HomeKeyYesNo" Name="HomeKeyYesNo">
+            <TypeRestriction Base="Value" SizeInBit="1">
+              <Enumeration Text="Nein" Value="0" Id="%ENID%" />
+              <Enumeration Text="Ja" Value="1" Id="%ENID%" />
+            </TypeRestriction>
+          </ParameterType>
+        </ParameterTypes>
+        <Parameters>
+          <Union SizeInBit="8">
+            <Memory CodeSegment="%MID%" Offset="0" BitOffset="0" />
+            <Parameter Id="%AID%_UP-%TT%00001" Name="Enabled" ParameterType="%AID%_PT-HomeKeyYesNo" Offset="0" BitOffset="0" Text="Apple Home Key aktivieren" Value="0" />
+            <Parameter Id="%AID%_UP-%TT%00002" Name="PairingPermitted" ParameterType="%AID%_PT-HomeKeyYesNo" Offset="0" BitOffset="1" Text="Lokale NFC-Inbetriebnahme erlauben" Value="0" />
+            <Parameter Id="%AID%_UP-%TT%00003" Name="AllowUid" ParameterType="%AID%_PT-HomeKeyYesNo" Offset="0" BitOffset="2" Text="Konventionelle UID-Tags zulassen" Value="1" />
+          </Union>
+        </Parameters>
+        <ParameterRefs>
+          <ParameterRef Id="%AID%_UP-%TT%00001_R-%TT%0000101" RefId="%AID%_UP-%TT%00001" />
+          <ParameterRef Id="%AID%_UP-%TT%00002_R-%TT%0000201" RefId="%AID%_UP-%TT%00002" />
+          <ParameterRef Id="%AID%_UP-%TT%00003_R-%TT%0000301" RefId="%AID%_UP-%TT%00003" />
+        </ParameterRefs>
+        <ComObjectTable>
+          <ComObject Id="%AID%_O-%TT%00001" Name="LockFeedback" Number="0" ObjectSize="1 Bit" Text="Physische Verriegelung" FunctionText="Home Key: 1=verriegelt" ReadFlag="Disabled" WriteFlag="Enabled" CommunicationFlag="Enabled" TransmitFlag="Disabled" UpdateFlag="Enabled" ReadOnInitFlag="Enabled" DatapointType="DPST-1-1" />
+        </ComObjectTable>
+        <ComObjectRefs>
+          <ComObjectRef Id="%AID%_O-%TT%00001_R-%TT%0000101" RefId="%AID%_O-%TT%00001" />
+        </ComObjectRefs>
+      </Static>
+      <Dynamic>
+        <Channel Id="%AID%_CH-%PREFIX%" Number="%PREFIX%" Name="Home Key" Text="Apple Home Key">
+          <ParameterBlock Id="%AID%_PB-nnn" Text="Apple Home Key">
+            <ParameterRefRef RefId="%AID%_UP-%TT%00001_R-%TT%0000101" />
+            <choose ParamRefId="%AID%_UP-%TT%00001_R-%TT%0000101"><when test="1">
+              <ParameterRefRef RefId="%AID%_UP-%TT%00002_R-%TT%0000201" />
+              <ParameterRefRef RefId="%AID%_UP-%TT%00003_R-%TT%0000301" />
+              <ComObjectRefRef RefId="%AID%_O-%TT%00001_R-%TT%0000101" />
+              <ParameterSeparator Id="%AID%_PS-nnn" Text="Home-Key-Berechtigungen werden lokal nach kryptografischer Identifikation vergeben. HomeKit-Kopplung allein gewährt keinen Zutritt." />
+            </when></choose>
+          </ParameterBlock>
+        </Channel>
+      </Dynamic>
+    </ApplicationProgram>
+  </ApplicationPrograms></Manufacturer></ManufacturerData>
+</KNX>

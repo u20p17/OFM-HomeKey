@@ -177,9 +177,9 @@ be combined with the fingerprint/relay peripheral profile using those pins.
 ## Dependencies and provenance
 
 DigitalDoorKey and rednblkx/pn7160 are separately committed local wrappers.
-HomeSpan is pinned to 2.1.5, SHA
-`45208b3ae9c2fb61d4862ea7aed34c75234506fe`, compatible with Arduino 3.2.1.
-The selected toolchain is PioArduino 54.03.21-2, ESP-IDF 5.4, GCC 14.2, C++23.
+OAM pins HomeSpan 2.1.8, SHA
+`107ffc07f4455754ea89068d8cf2e992de3583e6`, with Arduino 3.3.8.
+The selected HomeKey toolchain is PioArduino 55.03.38-1, ESP-IDF 5.5.4, C++23.
 
 `NfcReader.hpp`, `Pn7160Reader.hpp` and `Pn7160Reader.cpp` were extracted from
 rednblkx/HomeKey-ESP32 at `f167cba1950aa9e37afb9cb06163a78299599a67`.

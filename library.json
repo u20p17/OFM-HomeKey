@@ -1,7 +1,14 @@
 {
     "name": "OFM-HomeKey",
-    "version": "0.3.0",
-    "license": "MIT",
+    "version": "0.3.1",
+    "description": "HomeKey Firmware and ETS-Application",
+    "homepage": "https://openknx.de",
+    "authors": {
+        "name": "OpenKNX",
+        "email": "info@openknx.de",
+        "url": "https://openknx.de",
+        "maintainer": true
+    },
     "frameworks": ["arduino"],
     "platforms": ["espressif32"]
 }

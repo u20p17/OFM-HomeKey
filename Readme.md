@@ -152,6 +152,32 @@ code. Closing cancels queued requests as well as the current window.
 
 ## Local USB alternatives
 
+Wi-Fi setup is available from boot, independently of ETS configuration, Home
+Key enablement and reader/storage initialization:
+
+```
+wifi <SSID> <password>
+hk wifi <SSID> <password>
+```
+
+Both commands save HomeSpan and ESP32 station credentials and request a
+connection without waiting for association/DHCP. `wifi <SSID>` selects an open
+network. Once the HAP worker starts, changes are queued to that worker.
+KNX diagnostic commands cannot configure Wi-Fi. Network setup does not open a
+pairing window, enable Home Key or authorize endpoints. Console help lists the
+command. With KNX IP, saved station credentials reconnect before ETS setup.
+
+From the OAM application root, verify bootstrap, queue ownership, persistence
+selection, malformed input and remote rejection with:
+
+```sh
+c++ -std=c++17 -DOPENKNX_HOMEKEY_ENABLED -DARDUINO_ARCH_ESP32 \
+  -Itest/homekey_wifi/stubs -Ilib/OFM-HomeKey/src \
+  test/homekey_wifi/command_test.cpp lib/OFM-HomeKey/src/HomeKeyWifi.cpp \
+  -o /tmp/oam-homekey-wifi-test
+/tmp/oam-homekey-wifi-test
+```
+
 ```
 hk pair <8-digit-HomeKit-code>
 hk list
@@ -169,10 +195,27 @@ Hardware commissioning remains a validation plan: no phone/watch has been
 provisioned on this board during these software checks.
 
 Lock feedback is KO 11, 1=physically locked; its initial HomeKit state is Unknown.
-The PN7161 prototype pins are CS=GPIO1, SCLK=7, MISO=8, MOSI=9, IRQ=3, VEN=4.
+The XIAO PN7161 prototype pins are CS=GPIO1, SCLK=7, MISO=8, MOSI=9, IRQ=3, VEN=4.
 The reference adapter includes its PMU configuration; confirm supply, module
 variant, RF tuning and carrier wiring before flashing. This SPI profile cannot
 be combined with the fingerprint/relay peripheral profile using those pins.
+
+REG1 v00.11 uses `HOMEKEY_READER_I2C`: SDA=21, SCL=22, IRQ=14, VEN=13,
+DWL=19, address 0x28 at 400 kHz. Its Home Key TP, IP and TPIP environments
+exclude the legacy PN7160 owner and share the same NCI/ECP/authentication code.
+The I2C transport reads NCI headers and payloads separately, rejects incomplete
+transfers, bounds IRQ waits and standby address-NACK retries, and keeps the
+shared Wire bus alive when the reader stops. `HOMEKEY_PN7161_FIXED_3V3` selects
+the fixed-3.3 V PMU/TXLDO preset for VDD=VANT=3.3 V, as documented by the
+[module vendor](https://www.elechouse.com/docs/pn7161/). The SPI configuration
+retains its existing supply preset. Neither reader variant has been validated
+with a phone/watch by these software checks.
+
+HomeKit's model can be set with `HOMEKEY_DEVICE_MODEL`. Build-time
+`OPENKNX_WIFI_SSID`/`OPENKNX_WIFI_PASSWORD` credentials are also supplied to
+HomeSpan; otherwise an already connected KNX Wi-Fi network is reused or
+HomeSpan loads its own persisted credentials. The local `hk wifi` command
+remains available.
 
 ## Dependencies and provenance
 

@@ -10,7 +10,7 @@
 #include <vector>
 
 /**
- * @brief PN7160 SPI implementation of the INfcReader interface.
+ * @brief PN7160/PN7161 SPI or I2C implementation of INfcReader.
  *
  * Wraps PN7160_SPI transport and PN7160_NCI driver, managing the background
  * task_runner task and event-driven tag discovery.
@@ -55,7 +55,7 @@ private:
     uint8_t m_irqPin;
     uint8_t m_venPin;
 
-    std::unique_ptr<PN7160_SPI> m_transport;
+    std::unique_ptr<IPN7160Transport> m_transport;
     std::unique_ptr<PN7160_NCI> m_nci;
 
     bool m_connected = false;

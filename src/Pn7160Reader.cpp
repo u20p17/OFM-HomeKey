@@ -1,5 +1,9 @@
 #if defined(OPENKNX_HOMEKEY_ENABLED) && defined(ARDUINO_ARCH_ESP32)
+#include "hardware.h"
 #include "Pn7160Reader.hpp"
+#ifdef HOMEKEY_READER_I2C
+#include "Pn7161I2cTransport.h"
+#endif
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp32-hal.h"
@@ -32,6 +36,11 @@ bool Pn7160Reader::init() {
         stop();
     }
 
+#ifdef HOMEKEY_READER_I2C
+    m_transport = std::make_unique<Pn7161I2cTransport>(Wire, HOMEKEY_I2C_SDA,
+        HOMEKEY_I2C_SCL, m_irqPin, m_venPin, HOMEKEY_DWL_PIN,
+        HOMEKEY_I2C_ADDRESS, HOMEKEY_I2C_CLOCK);
+#else
     PN7160_SPI_Config spiCfg = {
         .miso = static_cast<gpio_num_t>(m_gpioPins[2]),
         .mosi = static_cast<gpio_num_t>(m_gpioPins[3]),
@@ -42,6 +51,7 @@ bool Pn7160Reader::init() {
     };
 
     m_transport = std::make_unique<PN7160_SPI>(SPI2_HOST, spiCfg, 4);
+#endif
     m_nci = std::make_unique<PN7160_NCI>(*m_transport);
 
     esp_err_t ret = m_nci->initialize();
@@ -60,6 +70,22 @@ bool Pn7160Reader::init() {
         stop();
         return false;
     }
+    #ifdef HOMEKEY_PN7161_FIXED_3V3
+    {
+        // ELECHOUSE fixed-3.3 V VBAT/VANT preset. Apply every initialization:
+        // VANT is not auto-detected and a previously stored 5 V preset is unsafe.
+        const std::vector<uint8_t> pmu = {
+            0x01, 0xA0, 0x0E, 0x0B, 0x11, 0x01, 0x02, 0x02,
+            0x00, 0x00, 0x1E, 0x00, 0x00, 0x10, 0x0C
+        };
+        if (m_nci->core_set_config(pmu) != nci::STATUS_OK)
+        {
+            ESP_LOGE(TAG, "Failed to configure PN7161 for 3.3 V VANT");
+            stop();
+            return false;
+        }
+    }
+    #else
     {
         NciMessage cfg;
         const uint8_t kPmuQuery[] = {0x1, 0xA0, 0x0E};
@@ -97,6 +123,7 @@ bool Pn7160Reader::init() {
         }
     }
 
+    #endif
     // NCI Core Spec v2.0 Section 6.1 - TOTAL_DURATION (Tag 0x00)
     static const std::vector<uint8_t> CORE_CONFIG_TOTAL_DURATION_SOLO = {
         0x01,  // Number of parameter fields

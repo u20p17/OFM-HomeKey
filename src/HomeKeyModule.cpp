@@ -2,6 +2,7 @@
 #include "HomeKeyModule.h"
 #include "HomeKeyProvisioning.h"
 #include "HomeKeyOnline.h"
+#include "HomeKeyWifi.h"
 #include "Pn7160Reader.hpp"
 #include "AccessControl.h"
 #include <algorithm>
@@ -110,7 +111,11 @@ bool HomeKeyModule::pairingAllowed() const
 
 void HomeKeyModule::readerTask()
 {
+#ifdef HOMEKEY_READER_I2C
+    reader = std::make_unique<Pn7160Reader>(std::array<uint8_t, 4>{}, HOMEKEY_IRQ_PIN, HOMEKEY_VEN_PIN, ecp);
+#else
     reader = std::make_unique<Pn7160Reader>(std::array<uint8_t, 4>{HOMEKEY_SPI_CS, HOMEKEY_SPI_SCLK, HOMEKEY_SPI_MISO, HOMEKEY_SPI_MOSI}, HOMEKEY_IRQ_PIN, HOMEKEY_VEN_PIN, ecp);
+#endif
     bool connected = false;
     uint32_t appliedGeneration = UINT32_MAX;
     for (;;)
@@ -325,21 +330,26 @@ namespace
 
 bool HomeKeyModule::processCommand(const std::string cmd, bool diagnoseKo)
 {
+    const auto wifi = HomeKeyWifi::command(cmd, diagnoseKo, started,
+        [this](const std::string& ssid, const std::string& password)
+        { return provisioning && provisioning->wifi(ssid, password); });
+    switch (wifi)
+    {
+        case HomeKeyWifi::Result::LocalOnly: logInfoP("WiFi configuration requires local console"); return true;
+        case HomeKeyWifi::Result::Invalid: logInfoP("wifi <SSID> <password> (SSID: 1-32 bytes, password: 0-64 bytes)"); return true;
+        case HomeKeyWifi::Result::Connecting: logInfoP("WiFi credentials saved; connecting"); return true;
+        case HomeKeyWifi::Result::Queued: logInfoP("WiFi configuration queued"); return true;
+        case HomeKeyWifi::Result::Busy: logInfoP("WiFi configuration busy; retry"); return true;
+        case HomeKeyWifi::Result::Failed: logInfoP("WiFi configuration could not be saved or started; retry"); return true;
+        case HomeKeyWifi::Result::NotHandled: break;
+    }
     if (cmd != "hk" && cmd.rfind("hk ", 0) != 0) return false;
     // Credential policy and network secrets can only be configured at the local console.
     if (diagnoseKo) { logInfoP("Home Key configuration requires local console"); return true; }
     std::istringstream stream(cmd);
     std::string prefix, operation, issuer, endpoint;
     stream >> prefix >> operation;
-    if (operation == "wifi" && started)
-    {
-        std::string ssid, password;
-        stream >> ssid;
-        std::getline(stream >> std::ws, password);
-        if (!ssid.empty() && ssid.size() <= 32 && password.size() <= 64)
-            logInfoP("WiFi configuration %s", provisioning->wifi(ssid, password) ? "queued" : "busy; retry");
-    }
-    else if ((operation == "pair" || operation == "code") && started && enabled && pairingPermitted)
+    if ((operation == "pair" || operation == "code") && started && enabled && pairingPermitted)
     {
         std::string code; stream >> code;
         if (HomeKey::validPairingCode(code))
@@ -388,5 +398,18 @@ bool HomeKeyModule::processCommand(const std::string cmd, bool diagnoseKo)
         else logInfoP("hk wifi <SSID> <password> | hk code <8digits> | hk pair <8digits> | hk list | hk map <issuer16hex> <endpoint12hex> <id0..1499> | hk unmap <issuer> <endpoint> | hk reset");
     }
     return true;
+}
+
+void HomeKeyModule::showHelp()
+{
+    openknx.console.printHelpLine("wifi <SSID> <password>", "Save WiFi and connect; available before ETS setup (local console)");
+    openknx.console.printHelpLine("hk", "Show Home Key command syntax (local console)");
+    openknx.console.printHelpLine("hk wifi <SSID> <password>", "Save WiFi and connect; also works before ETS setup");
+    openknx.console.printHelpLine("hk code <8digits>", "Save private HomeKit setup code; requires ETS Home Key/commissioning enable");
+    openknx.console.printHelpLine("hk pair <8digits>", "Save setup code and open pairing for 5 minutes; requires ETS permission");
+    openknx.console.printHelpLine("hk list", "List provisioned issuer/endpoint IDs and their access IDs");
+    openknx.console.printHelpLine("hk map <issuer16hex> <endpoint12hex> <id0..1499>", "Assign a provisioned endpoint to an NFC action ID; ETS authorization must be off");
+    openknx.console.printHelpLine("hk unmap <issuer16hex> <endpoint12hex>", "Remove a local endpoint mapping; ETS authorization must be off");
+    openknx.console.printHelpLine("hk reset", "Clear Home Key credentials/local mappings and close pairing; keep WiFi and ETS policy");
 }
 #endif

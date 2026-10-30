@@ -2,6 +2,7 @@
 // NFC service and controller lifecycle adapted from rednblkx/HomeKey-ESP32 (MIT).
 #include "HomeKeyProvisioning.h"
 #include "HomeKeyModule.h"
+#include "HomeKeyWifi.h"
 #include <sodium.h>
 #ifdef STRINGIFY
 #undef STRINGIFY
@@ -112,11 +113,28 @@ void HomeKeyProvisioning::begin()
     char unavailableCode[9];
     randomUnavailableCode(unavailableCode);
     homeSpan.setPairingCode(unavailableCode);
+#ifdef OPENKNX_WIFI_SSID
+    #ifdef OPENKNX_WIFI_PASSWORD
+    homeSpan.setWifiCredentials(OPENKNX_WIFI_SSID, OPENKNX_WIFI_PASSWORD);
+    #else
+    homeSpan.setWifiCredentials(OPENKNX_WIFI_SSID, "");
+    #endif
+#elif defined(KNX_IP_WIFI)
+    // KNX IP may already be connected before ETS enables Home Key. Let HAP
+    // use that same network rather than replacing it with empty credentials.
+    if (WiFi.status() == WL_CONNECTED)
+        homeSpan.setWifiCredentials(WiFi.SSID().c_str(), WiFi.psk().c_str());
+#endif
     homeSpan.begin(Category::Locks, "OpenKNX Home Key", "OpenKNX-HK-", "OpenKNX");
     new SpanAccessory();
     new AccessoryInfo();
     new Characteristic::Identify(); new Characteristic::Manufacturer("OpenKNX");
-    new Characteristic::Model("XIAO ESP32-S3 PN7161"); new Characteristic::Name("OpenKNX Home Key");
+#ifdef HOMEKEY_DEVICE_MODEL
+    new Characteristic::Model(HOMEKEY_DEVICE_MODEL);
+#else
+    new Characteristic::Model("XIAO ESP32-S3 PN7161");
+#endif
+    new Characteristic::Name("OpenKNX Home Key");
     new Characteristic::FirmwareRevision("0.3.0");
     uint8_t mac[6]; esp_read_mac(mac, ESP_MAC_WIFI_STA);
     char serial[13]; snprintf(serial, sizeof(serial), "%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
@@ -177,7 +195,8 @@ void HomeKeyProvisioning::poll()
                 }
             }
         }
-        else homeSpan.setWifiCredentials(command.ssid, command.password);
+        else if (!HomeKeyWifi::configure(command.ssid, command.password))
+            ESP_LOGE("HomeKey", "WiFi station could not be started");
         volatile char* secret = command.password;
         for (size_t i = 0; i < sizeof(command.password); ++i) secret[i] = 0;
         secret = command.code;

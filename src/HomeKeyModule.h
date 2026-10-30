@@ -21,6 +21,7 @@ class HomeKeyModule : public OpenKNX::Module
     void processBeforeTablesUnload() override { enabled = false; policyLoaded = false; cancelCommissioning(); }
     void processBeforeRestart() override { enabled = false; cancelCommissioning(); }
     bool processCommand(const std::string cmd, bool diagnoseKo) override;
+    void showHelp() override;
     bool pairingAllowed() const;
     bool processFunctionProperty(uint8_t object, uint8_t property, uint8_t length, uint8_t* data, uint8_t* result, uint8_t& resultLength) override;
     bool processFunctionPropertyState(uint8_t object, uint8_t property, uint8_t length, uint8_t* data, uint8_t* result, uint8_t& resultLength) override;

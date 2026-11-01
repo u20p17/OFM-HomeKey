@@ -18,8 +18,8 @@ class HomeKeyModule : public OpenKNX::Module
     void setup() override;
     void loop() override;
     void processInputKo(GroupObject&) override;
-    void processBeforeTablesUnload() override { enabled = false; policyLoaded = false; cancelCommissioning(); }
-    void processBeforeRestart() override { enabled = false; cancelCommissioning(); }
+    void processBeforeTablesUnload() override { enabled = false; policyLoaded = false; webCodeAllowed = false; cancelCommissioning(); }
+    void processBeforeRestart() override { enabled = false; webCodeAllowed = false; cancelCommissioning(); }
     bool processCommand(const std::string cmd, bool diagnoseKo) override;
     void showHelp() override;
     bool pairingAllowed() const;
@@ -28,6 +28,19 @@ class HomeKeyModule : public OpenKNX::Module
     HomeKeyCredentialStore store;
   private:
     friend class HomeKeyProvisioning;
+    enum class WebCodeState : uint8_t { Idle, Pending, Saved, Rejected, Failed, WrongCode, RateLimited };
+    std::atomic<WebCodeState> webCodeState{WebCodeState::Idle};
+    std::atomic<bool> webCodeAllowed{false};
+    std::atomic<bool> codeConfigured{false};
+    std::array<char, 5> qrSetupId{};
+    std::atomic<uint32_t> codeBlockedUntil{0};
+#ifdef OPENKNX_HOMEKEY_WEB
+    void setupWeb();
+    void loopWeb();
+    struct WebCodeCommand { char code[9] = {}; char previous[9] = {}; uint32_t epoch = 0; };
+    QueueHandle_t webCommands = nullptr;
+    std::string webToken;
+#endif
     enum class EventKind : uint8_t { Denied, Uid, Authenticated };
     struct Event
     {

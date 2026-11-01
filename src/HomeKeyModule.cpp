@@ -22,17 +22,20 @@ void HomeKeyModule::setup()
     events = xQueueCreate(4, sizeof(Event));
     if (!events) { fatal = true; logErrorP("Home Key event queue unavailable"); return; }
     provisioning = std::make_unique<HomeKeyProvisioning>(*this);
+#ifdef OPENKNX_HOMEKEY_WEB
+    setupWeb();
+#endif
     logInfoP("Home Key ready for ETS enable; no endpoints authorized automatically");
 }
 
 void HomeKeyModule::loop()
 {
-    if (!knx.configured()) { enabled = false; policyLoaded = false; cancelCommissioning(); return; }
-    if (!events) { enabled = false; cancelCommissioning(); updateStatus(); return; }
+    if (!knx.configured()) { enabled = false; policyLoaded = false; webCodeAllowed = false; cancelCommissioning(); return; }
+    if (!events) { enabled = false; webCodeAllowed = false; cancelCommissioning(); updateStatus(); return; }
     if (!policyLoaded)
     {
         std::unique_lock<std::recursive_mutex> guard(store.mutex, std::try_to_lock);
-        if (!guard.owns_lock()) { enabled = false; return; }
+        if (!guard.owns_lock()) { enabled = false; webCodeAllowed = false; return; }
         static_assert(HK_Authorization02Enabled - HK_Authorization01Enabled == HomeKey::EtsRowBytes, "ETS row layout changed");
         etsAuthorization = ParamHK_EtsAuthorization;
         etsTableValid = !etsAuthorization || HomeKey::parseEtsRows(knx.paramData(HK_Authorization01Enabled), HomeKey::EtsRows * HomeKey::EtsRowBytes, etsMappings);
@@ -62,6 +65,9 @@ void HomeKeyModule::loop()
     }
     if (!enabled || !pairingPermitted)
         cancelCommissioning();
+#ifdef OPENKNX_HOMEKEY_WEB
+    loopWeb();
+#endif
     // Clear expired deadlines permanently; a retained millis deadline could
     // become positive again after a later timer wrap.
     uint32_t deadline = pairingUntil.load();
@@ -351,12 +357,18 @@ bool HomeKeyModule::processCommand(const std::string cmd, bool diagnoseKo)
     stream >> prefix >> operation;
     if ((operation == "pair" || operation == "code") && started && enabled && pairingPermitted)
     {
-        std::string code; stream >> code;
-        if (HomeKey::validPairingCode(code))
+        std::string code, previous, extra; stream >> code >> previous;
+        if (HomeKey::validPairingCode(code) && !(stream >> extra) &&
+            (previous.empty() || (previous.size() == 8 && previous.find_first_not_of("0123456789") == std::string::npos)))
         {
-            bool queued = operation == "pair" ? provisioning->pairingCode(code) : provisioning->configurePairingCode(code);
+            bool queued = operation == "pair" ? provisioning->pairingCode(code, previous) : provisioning->configurePairingCode(code, previous);
             logInfoP("Commissioning command %s", queued ? "queued" : "busy; retry");
         }
+        else logWarningP("hk code/pair <new8digits> [old8digits]; existing code required for replacement");
+        volatile char* secret = code.data();
+        for (size_t i = 0; i < code.size(); ++i) secret[i] = 0;
+        secret = previous.data();
+        for (size_t i = 0; i < previous.size(); ++i) secret[i] = 0;
     }
     else
     {
@@ -395,7 +407,7 @@ bool HomeKeyModule::processCommand(const std::string cmd, bool diagnoseKo)
             logInfoP("Mapping update %s", store.healthy ? "saved" : "FAILED");
         }
         else if (operation == "reset") { store.clear(); cancelCommissioning(); }
-        else logInfoP("hk wifi <SSID> <password> | hk code <8digits> | hk pair <8digits> | hk list | hk map <issuer16hex> <endpoint12hex> <id0..1499> | hk unmap <issuer> <endpoint> | hk reset");
+        else logInfoP("hk wifi <SSID> <password> | hk code <new8digits> [old8digits] | hk pair <new8digits> [old8digits] | hk list | hk map <issuer16hex> <endpoint12hex> <id0..1499> | hk unmap <issuer> <endpoint> | hk reset");
     }
     return true;
 }
@@ -405,8 +417,8 @@ void HomeKeyModule::showHelp()
     openknx.console.printHelpLine("wifi <SSID> <password>", "Save WiFi and connect; available before ETS setup (local console)");
     openknx.console.printHelpLine("hk", "Show Home Key command syntax (local console)");
     openknx.console.printHelpLine("hk wifi <SSID> <password>", "Save WiFi and connect; also works before ETS setup");
-    openknx.console.printHelpLine("hk code <8digits>", "Save private HomeKit setup code; requires ETS Home Key/commissioning enable");
-    openknx.console.printHelpLine("hk pair <8digits>", "Save setup code and open pairing for 5 minutes; requires ETS permission");
+    openknx.console.printHelpLine("hk code <new8digits> [old8digits]", "Save setup code; replacement requires old code, also via web console");
+    openknx.console.printHelpLine("hk pair <new8digits> [old8digits]", "Save code and open pairing for 5 minutes; replacement requires old code");
     openknx.console.printHelpLine("hk list", "List provisioned issuer/endpoint IDs and their access IDs");
     openknx.console.printHelpLine("hk map <issuer16hex> <endpoint12hex> <id0..1499>", "Assign a provisioned endpoint to an NFC action ID; ETS authorization must be off");
     openknx.console.printHelpLine("hk unmap <issuer16hex> <endpoint12hex>", "Remove a local endpoint mapping; ETS authorization must be off");

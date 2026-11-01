@@ -98,15 +98,34 @@ namespace
 void HomeKeyProvisioning::begin()
 {
     std::unique_lock<std::shared_mutex> guard(homeSpan.getMutex());
+    uint8_t mac[6];
+    if (esp_read_mac(mac, ESP_MAC_WIFI_STA) != ESP_OK)
+    {
+        ESP_LOGE("HomeKey", "Cannot read device MAC for HomeKit setup ID");
+        return;
+    }
     active = this;
     commands = xQueueCreate(4, sizeof(Command));
     if (nvs_open_from_partition("homekey", "commissioning", NVS_READWRITE, &codeHandle) == ESP_OK)
     {
         size_t size = sizeof(configuredCode);
-        if (nvs_get_blob(codeHandle, "code", configuredCode, &size) != ESP_OK || size != sizeof(configuredCode) ||
-            configuredCode[8] != 0 || !HomeKey::validPairingCode(std::string(configuredCode, 8)))
-            std::fill(std::begin(configuredCode), std::end(configuredCode), 0);
+        const auto loaded = nvs_get_blob(codeHandle, "code", configuredCode, &size);
+        codeStorageHealthy = loaded == ESP_ERR_NVS_NOT_FOUND ||
+            (loaded == ESP_OK && size == sizeof(configuredCode) && configuredCode[8] == 0 &&
+             HomeKey::validPairingCode(std::string(configuredCode, 8)));
+        if (loaded == ESP_ERR_NVS_NOT_FOUND) sodium_memzero(configuredCode, sizeof(configuredCode));
+        uint8_t failures = 0;
+        const auto counter = nvs_get_u8(codeHandle, "failures", &failures);
+        if (counter != ESP_OK && counter != ESP_ERR_NVS_NOT_FOUND) codeStorageHealthy = false;
+        attempts.restore(failures, millis());
+        module.codeBlockedUntil = attempts.blockedUntil;
     }
+    if (!codeStorageHealthy)
+    {
+        sodium_memzero(configuredCode, sizeof(configuredCode));
+        ESP_LOGE("HomeKey", "Setup-code storage unavailable or invalid; code changes disabled");
+    }
+    module.codeConfigured = codeStorageHealthy && HomeKey::validPairingCode(configuredCode);
     module.commissioningResult = HomeKey::validPairingCode(configuredCode) ? 0 : 4;
     homeSpan.setSerialInputDisable(true); // OpenKNX owns the console.
     homeSpan.setLogLevel(-1);
@@ -122,9 +141,11 @@ void HomeKeyProvisioning::begin()
 #elif defined(KNX_IP_WIFI)
     // KNX IP may already be connected before ETS enables Home Key. Let HAP
     // use that same network rather than replacing it with empty credentials.
-    if (WiFi.status() == WL_CONNECTED)
+    if (!WiFi.SSID().isEmpty())
         homeSpan.setWifiCredentials(WiFi.SSID().c_str(), WiFi.psk().c_str());
 #endif
+    module.qrSetupId = HomeKey::pairingSetupId(mac);
+    homeSpan.setQRID(module.qrSetupId.data());
     homeSpan.begin(Category::Locks, "OpenKNX Home Key", "OpenKNX-HK-", "OpenKNX");
     new SpanAccessory();
     new AccessoryInfo();
@@ -136,7 +157,6 @@ void HomeKeyProvisioning::begin()
 #endif
     new Characteristic::Name("OpenKNX Home Key");
     new Characteristic::FirmwareRevision("0.3.0");
-    uint8_t mac[6]; esp_read_mac(mac, ESP_MAC_WIFI_STA);
     char serial[13]; snprintf(serial, sizeof(serial), "%02X%02X%02X%02X%02X%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
     new Characteristic::SerialNumber(serial);
     uint8_t finishBytes[] = {1, 4, 0xce, 0xd5, 0xda, 0};
@@ -158,18 +178,56 @@ void HomeKeyProvisioning::poll()
     {
         if (command.pair)
         {
-            if (command.epoch == module.commissioningEpoch.load())
+            if (command.webRequest && !module.webCodeAllowed)
             {
-                if (!module.enabled || !module.pairingPermitted) module.commissioningResult = 3;
+                module.webCodeState = HomeKeyModule::WebCodeState::Rejected;
+                ESP_LOGW("HomeKey", "Web setup-code change no longer permitted");
+            }
+            else if (command.epoch == module.commissioningEpoch.load())
+            {
+                if (!module.enabled || !module.pairingPermitted)
+                {
+                    module.commissioningResult = 3;
+                    if (command.webRequest)
+                    {
+                        module.webCodeState = HomeKeyModule::WebCodeState::Rejected;
+                        ESP_LOGW("HomeKey", "Web setup-code change no longer permitted");
+                    }
+                }
+                else if (command.saveCode && !authorizeCodeChange(command))
+                {
+                    module.commissioningResult = 3;
+                }
+                else if (command.saveCode &&
+                         (command.epoch != module.commissioningEpoch.load() || !module.enabled ||
+                          !module.pairingPermitted || (command.webRequest && !module.webCodeAllowed)))
+                {
+                    module.commissioningResult = 3;
+                    if (command.webRequest) module.webCodeState = HomeKeyModule::WebCodeState::Rejected;
+                    ESP_LOGW("HomeKey", "Setup-code change permission withdrawn");
+                }
                 else
                 {
                     bool persisted = true;
                     if (command.saveCode)
                     {
-                        persisted = codeHandle && HomeKey::validPairingCode(command.code) &&
+                        module.cancelCommissioning();
+                        command.epoch = module.commissioningEpoch.load();
+                        persisted = codeStorageHealthy && codeHandle && HomeKey::validPairingCode(command.code) &&
                             nvs_set_blob(codeHandle, "code", command.code, sizeof(command.code)) == ESP_OK && nvs_commit(codeHandle) == ESP_OK;
-                        if (persisted) std::copy(std::begin(command.code), std::end(command.code), configuredCode);
-                        else module.commissioningResult = 6;
+                        if (persisted)
+                        {
+                            std::copy(std::begin(command.code), std::end(command.code), configuredCode);
+                            module.codeConfigured = true;
+                        }
+                        else
+                        {
+                            codeStorageHealthy = false;
+                            module.commissioningResult = 6;
+                            ESP_LOGE("HomeKey", "Setup code could not be saved");
+                        }
+                        if (command.webRequest)
+                            module.webCodeState = persisted ? HomeKeyModule::WebCodeState::Saved : HomeKeyModule::WebCodeState::Failed;
                     }
                     if (persisted && command.open)
                     {
@@ -194,6 +252,11 @@ void HomeKeyProvisioning::poll()
                     else if (persisted) module.commissioningResult = 0;
                 }
             }
+            else if (command.webRequest)
+            {
+                module.webCodeState = HomeKeyModule::WebCodeState::Rejected;
+                ESP_LOGW("HomeKey", "Web setup-code change cancelled");
+            }
         }
         else if (!HomeKeyWifi::configure(command.ssid, command.password))
             ESP_LOGE("HomeKey", "WiFi station could not be started");
@@ -201,6 +264,7 @@ void HomeKeyProvisioning::poll()
         for (size_t i = 0; i < sizeof(command.password); ++i) secret[i] = 0;
         secret = command.code;
         for (size_t i = 0; i < sizeof(command.code); ++i) secret[i] = 0;
+        sodium_memzero(command.previous, sizeof(command.previous));
     }
 
     int feedback = pendingFeedback.exchange(-1);
@@ -229,26 +293,88 @@ bool HomeKeyProvisioning::wifi(const std::string& ssid, const std::string& passw
     for (size_t i = 0; i < sizeof(command.password); ++i) secret[i] = 0;
     return accepted;
 }
-bool HomeKeyProvisioning::queueCode(const std::string& code, bool open)
+bool HomeKeyProvisioning::saveAttemptCount()
 {
-    if (!ready || !commands || !HomeKey::validPairingCode(code)) return false;
-    module.cancelCommissioning();
+    if (codeStorageHealthy && nvs_set_u8(codeHandle, "failures", attempts.failures) == ESP_OK &&
+        nvs_commit(codeHandle) == ESP_OK) return true;
+    codeStorageHealthy = false;
+    ESP_LOGE("HomeKey", "Setup-code attempt counter could not be saved; code changes disabled");
+    return false;
+}
+
+bool HomeKeyProvisioning::authorizeCodeChange(const Command& command)
+{
+    if (!codeStorageHealthy)
+    {
+        if (command.webRequest) module.webCodeState = HomeKeyModule::WebCodeState::Failed;
+        ESP_LOGE("HomeKey", "Setup-code change rejected: storage unavailable");
+        return false;
+    }
+    const uint32_t now = millis();
+    if (attempts.remaining(now))
+    {
+        if (command.webRequest) module.webCodeState = HomeKeyModule::WebCodeState::RateLimited;
+        ESP_LOGW("HomeKey", "Setup-code change blocked: five-minute cooldown active");
+        return false;
+    }
+    if (attempts.failures == HomeKey::CodeAttemptLimit::MaxFailures)
+    {
+        attempts.clear();
+        module.codeBlockedUntil = 0;
+        if (!saveAttemptCount())
+        {
+            if (command.webRequest) module.webCodeState = HomeKeyModule::WebCodeState::Failed;
+            return false;
+        }
+    }
+    if (!HomeKey::matchesPreviousCode(configuredCode, command.previous))
+    {
+        attempts.failed(now);
+        module.codeBlockedUntil = attempts.blockedUntil;
+        const bool saved = saveAttemptCount();
+        if (command.webRequest)
+            module.webCodeState = !saved ? HomeKeyModule::WebCodeState::Failed :
+                attempts.remaining(now) ? HomeKeyModule::WebCodeState::RateLimited : HomeKeyModule::WebCodeState::WrongCode;
+        ESP_LOGW("HomeKey", "Setup-code change rejected: existing code incorrect");
+        return false;
+    }
+    if (attempts.failures)
+    {
+        attempts.clear();
+        module.codeBlockedUntil = 0;
+        if (!saveAttemptCount())
+        {
+            if (command.webRequest) module.webCodeState = HomeKeyModule::WebCodeState::Failed;
+            return false;
+        }
+    }
+    return true;
+}
+
+bool HomeKeyProvisioning::queueCode(const std::string& code, const std::string& previous, bool open, bool webRequest)
+{
+    if (!ready || !commands || !HomeKey::validPairingCode(code) ||
+        (!previous.empty() && (previous.size() != 8 || previous.find_first_not_of("0123456789") != std::string::npos)))
+        return false;
     Command command;
     command.pair = true; command.saveCode = true; command.open = open;
+    command.webRequest = webRequest;
     command.epoch = module.commissioningEpoch.load();
     snprintf(command.code, sizeof(command.code), "%s", code.c_str());
+    snprintf(command.previous, sizeof(command.previous), "%s", previous.c_str());
     bool accepted = xQueueSend(commands, &command, 0) == pdTRUE;
     volatile char* secret = command.code;
     for (size_t i = 0; i < sizeof(command.code); ++i) secret[i] = 0;
+    sodium_memzero(command.previous, sizeof(command.previous));
     return accepted;
 }
-bool HomeKeyProvisioning::pairingCode(const std::string& code)
+bool HomeKeyProvisioning::pairingCode(const std::string& code, const std::string& previous)
 {
-    return queueCode(code, true);
+    return queueCode(code, previous, true, false);
 }
-bool HomeKeyProvisioning::configurePairingCode(const std::string& code)
+bool HomeKeyProvisioning::configurePairingCode(const std::string& code, const std::string& previous, bool webRequest)
 {
-    return queueCode(code, false);
+    return queueCode(code, previous, false, webRequest);
 }
 bool HomeKeyProvisioning::openPairingWindow()
 {

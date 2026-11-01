@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <vector>
 #include <string>
+#include <string_view>
 
 namespace HomeKey
 {
@@ -17,10 +18,24 @@ namespace HomeKey
     constexpr size_t MaxMappings = 64;
     constexpr uint16_t InvalidId = 0xffff;
 
-    inline bool validPairingCode(const std::string& code)
+    inline bool validPairingCode(std::string_view code)
     {
         return code.size() == 8 && code.find_first_not_of("0123456789") == std::string::npos &&
                code.find_first_not_of(code[0]) != std::string::npos && code != "12345678" && code != "87654321";
+    }
+
+    inline std::array<char, 5> pairingSetupId(const uint8_t (&mac)[6])
+    {
+        constexpr char digits[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        uint32_t value = 0;
+        for (auto byte : mac) value = (value * 256 + byte) % 1679616; // 36^4
+        std::array<char, 5> id{};
+        for (int i = 3; i >= 0; --i)
+        {
+            id[i] = digits[value % 36];
+            value /= 36;
+        }
+        return id;
     }
 
     constexpr size_t EtsRows = 16;

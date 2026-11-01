@@ -34,7 +34,9 @@ an owned 18-byte member, retained for the reader lifetime.
 Reader identity, endpoint keys/counters and local USB mappings use one atomic, bounded
 NVS blob (schema `HKS1`) in partition `homekey`, namespace `ofm-homekey`.
 Limits: 16 issuers, 64 endpoints total, 64 mappings, 32 KB encoded blob.
-No private credential is placed in ETS, KNX objects or public logs. HAP pairing
+The module never writes private credentials to ETS, KNX objects or its logs.
+The standard Network web console nevertheless echoes entered commands to all
+connected consoles; do not use it for password/setup-code commands. HAP pairing
 and Wi-Fi use HomeSpan's namespaces in the default NVS partition. The locally
 configured HomeKit setup code is stored privately in the `commissioning`
 namespace of `homekey`; it is never placed in an ETS parameter or telegram.
@@ -61,9 +63,21 @@ store and selection/mapping policy; they do not simulate an Apple credential.
 
 ## Commissioning from ETS
 
-Use OAM's `debug_ESP32S3_AppleHomeKey` target and the matching development
-application A6/02 version 0.3 / header. Existing version 0.1/0.2 downloads need the
-new application because the parameter table and communication objects changed.
+Use OAM's `debug_ESP32S3_AppleHomeKey` or REG1 Home Key target and the matching
+development application A6/01 version 11.1, generated from
+`src/AccessControl.xml` with `include/knxprod.h`. Home Key is now part of OAM's
+original development application. Existing A6/02 Home Key installations and
+older A6/01 downloads need a firmware rebuild and matching ETS download.
+In ETS the Apple Home Key page is inside Zutrittskontrolle, with parameter
+context help and an Apple icon. The OFM-Network web UI has a separate Home Key
+page using the standard OpenKNX layout. Setup-code writes require ETS Home Key
+and commissioning permission plus programming mode; the saved code is never
+returned to the Home Key page. Once initialized, replacement requires the existing
+setup code, verified on the HAP worker. Five wrong attempts impose a five-minute
+cooldown shared by the form and console; the counter persists across reboot.
+An exhausted cooldown restarts on reboot. Invalid code storage or failure to
+persist the counter disables code changes rather than allowing initialization.
+HTTP must only be used on a trusted network.
 Enable Home Key and `NFC-Inbetriebnahme über USB/KNX erlauben` in ETS.
 Set network credentials and a private setup code once at the local USB console:
 
@@ -75,6 +89,27 @@ hk code <8-digit-HomeKit-code>
 Choose a code that is neither repeated digits nor 12345678/87654321. Wait until
 the HAP worker is ready; retry if a command reports busy. The code is persisted
 on that worker. A successful `hk code` does not open commissioning.
+For replacement use `hk code <new8digits> <old8digits>` at USB, or the Home Key
+form. `hk pair <new8digits> <old8digits>` requires the old code too, even if the
+new code is unchanged. For reopening a window without changing the code, use ETS.
+Do not enter these commands into the standard web console: it broadcasts input.
+The setup code is not a web administrator password. Web console
+authentication and a configurable first-use administrator password are deferred;
+do not expose these development tools to untrusted clients.
+
+The OAM web interface includes overview, console and Home Key, but no web group
+monitor or file manager/upload. During an open pairing window, enter the current
+setup code under **In Apple Home hinzufügen** to generate a scannable HomeKit
+`X-HM://` QR locally in the browser. The local qrcode-generator 2.0.4 asset is
+MIT-licensed (see `web/LICENSE-qrcode.txt`); no online QR service is used. HomeSpan
+and the webpage use the same stable four-character MAC-derived setup ID and lock
+category with IP pairing. The saved code is never returned; entered codes are
+not verified by this form, and wrong codes cannot pair. The QR itself contains
+the entered code, so keep it private. It clears on hide/page exit and when status
+polling detects a closed window, pending code changes or connection loss.
+Scan with the iPhone camera or Apple Home's accessory scanner on the same network.
+Pairing does not configure ETS authorization or grant access. The short setup ID
+is a discovery aid, not a secret or an authentication credential.
 
 Use the ETS parameter-page buttons `Pairing öffnen (5 Minuten)`, `Pairing
 schließen` and `Status aktualisieren`. They connect to the device through the
@@ -93,7 +128,7 @@ action ID, configure its NFCACT action, enable the row and download to authorize
 it. Importing IDs alone grants no access. No private keys/setup codes are read.
 The online status field records the last query and is refreshed on demand.
 
-Group Monitor remains an alternative. Assign addresses to these objects:
+The ETS Group Monitor remains an alternative. Assign addresses to these objects:
 
 | KO | Function | DPT |
 | --- | --- | --- |
@@ -179,17 +214,20 @@ c++ -std=c++17 -DOPENKNX_HOMEKEY_ENABLED -DARDUINO_ARCH_ESP32 \
 ```
 
 ```
-hk pair <8-digit-HomeKit-code>
+hk pair <new8digits> [old8digits]
 hk list
 hk map <issuer16hex> <endpoint12hex> <id0..1499>
 hk unmap <issuer16hex> <endpoint12hex>
 hk reset
 ```
 
-`hk pair` saves the code and opens a window. Map/unmap works only when ETS
+`hk pair` saves the code and opens a window; replacement requires the old code.
+Map/unmap works only when ETS
 authorization is set to No; that mode retains up to 64 persistent local mappings.
 KNX diagnostic console commands cannot configure Wi-Fi, setup codes or local
-mappings. `hk reset` clears credentials/local mappings and closes commissioning,
+mappings. The standard web console is not a KNX diagnostic console and can run
+these commands; its unrestricted administration is a development limitation.
+`hk reset` clears credentials/local mappings and closes commissioning,
 retaining HAP/Wi-Fi, the private setup code and the ETS policy declarations.
 Hardware commissioning remains a validation plan: no phone/watch has been
 provisioned on this board during these software checks.

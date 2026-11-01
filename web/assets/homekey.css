@@ -1,0 +1,35 @@
+.homekey section {
+    margin-top: 1.5rem;
+    max-width: 48rem;
+}
+
+.homekey p {
+    margin: .8rem 0;
+}
+
+.homekey form {
+    display: grid;
+    gap: .5rem;
+    max-width: 24rem;
+}
+
+.homekey #homekey-previous-row:not([hidden]) {
+    display: grid;
+    gap: .5rem;
+}
+
+.homekey [data-error="true"] {
+    color: #b00020;
+}
+
+.homekey #homekey-qr {
+    max-width: 18rem;
+    margin: 1rem 0;
+    background: white;
+}
+
+.homekey #homekey-qr svg {
+    display: block;
+    width: 100%;
+    height: auto;
+}

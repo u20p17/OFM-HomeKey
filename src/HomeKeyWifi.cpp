@@ -7,6 +7,9 @@
 #endif
 #include <HomeSpan.h>
 #include <sstream>
+#ifdef OPENKNX_HOMEKEY_WEB
+#include <nvs.h>
+#endif
 
 namespace HomeKeyWifi
 {
@@ -30,6 +33,16 @@ namespace HomeKeyWifi
         // Save both HomeSpan's network and Arduino's station configuration:
         // KNX IP must be able to reconnect before ETS enables Home Key.
         homeSpan.setWifiCredentials(ssid.c_str(), password.c_str());
+#ifdef OPENKNX_HOMEKEY_WEB
+        // OFM-Network reloads this namespace on startup, before Home Key starts.
+        nvs_handle_t network;
+        if (nvs_open("WIFI", NVS_READWRITE, &network) != ESP_OK) return false;
+        const bool saved = nvs_set_str(network, "SSID", ssid.c_str()) == ESP_OK &&
+                           nvs_set_str(network, "PSK", password.c_str()) == ESP_OK &&
+                           nvs_commit(network) == ESP_OK;
+        nvs_close(network);
+        if (!saved) return false;
+#endif
         WiFi.setAutoReconnect(true);
         // Only request connection here; do not wait for association or DHCP.
         // No HomeKit pairing or credential authorization is enabled here.

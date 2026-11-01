@@ -1,0 +1,7 @@
+apple.png is rendered from the Material Design Icons "apple" SVG:
+https://github.com/Templarian/MaterialDesign/blob/master/svg/apple.svg
+
+Source: Pictogrammers / Material Design Icons, licensed under Apache 2.0.
+See LICENSE-2.0.txt. Modification: rendered as a 24 x 24 PNG.
+Apple and the Apple logo are trademarks of Apple Inc.; this icon does not
+imply affiliation with or endorsement by Apple Inc.

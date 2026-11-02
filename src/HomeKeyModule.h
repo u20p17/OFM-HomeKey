@@ -52,6 +52,7 @@ class HomeKeyModule : public OpenKNX::Module
         uint8_t uidLength = 0;
     };
     void readerTask();
+    void showMemory();
     void handleTag(const std::vector<uint8_t>& uid, uint8_t sak);
     void authenticate(const std::vector<uint8_t>& selectResponse);
     void enqueue(const Event&);

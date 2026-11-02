@@ -257,6 +257,12 @@ remains available.
 
 ## Dependencies and provenance
 
+`hk memory` reports free, largest-block and minimum-free internal heap and the
+Home Key tasks' minimum remaining stack space. The stack values are in bytes,
+out of 12288 bytes per task; zero means that task has not started. Run it after
+boot, web access, HomeKit pairing, and a Home Key authentication before
+considering smaller stacks. Idle headroom does not cover the cryptographic paths.
+
 The ESP32 Home Key web page uses the network module's `HtmlWriter`, which
 assembles its body in checked 512-byte chunks. It keeps the existing form token,
 code-change checks and browser-generated QR behavior while avoiding a complete

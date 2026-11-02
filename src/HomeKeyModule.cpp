@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <sstream>
 #include <esp_timer.h>
+#include <esp_heap_caps.h>
 #include <sodium.h>
 
 HomeKeyModule openknxHomeKey;
@@ -349,6 +350,11 @@ bool HomeKeyModule::processCommand(const std::string cmd, bool diagnoseKo)
         case HomeKeyWifi::Result::Failed: logInfoP("WiFi configuration could not be saved or started; retry"); return true;
         case HomeKeyWifi::Result::NotHandled: break;
     }
+    if (cmd == "hk memory")
+    {
+        showMemory();
+        return true;
+    }
     if (cmd != "hk" && cmd.rfind("hk ", 0) != 0) return false;
     // Credential policy and network secrets can only be configured at the local console.
     if (diagnoseKo) { logInfoP("Home Key configuration requires local console"); return true; }
@@ -412,8 +418,21 @@ bool HomeKeyModule::processCommand(const std::string cmd, bool diagnoseKo)
     return true;
 }
 
+void HomeKeyModule::showMemory()
+{
+    const uint32_t caps = MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT;
+    logInfoP("Internal heap: free=%u largest=%u minimum=%u bytes",
+        unsigned(heap_caps_get_free_size(caps)), unsigned(heap_caps_get_largest_free_block(caps)),
+        unsigned(heap_caps_get_minimum_free_size(caps)));
+    logInfoP("HomeKey stack minimum free: NFC=%u HAP=%u bytes (12288 each)",
+        readerHandle ? unsigned(uxTaskGetStackHighWaterMark(readerHandle)) : 0,
+        hapHandle ? unsigned(uxTaskGetStackHighWaterMark(hapHandle)) : 0);
+
+}
+
 void HomeKeyModule::showHelp()
 {
+    openknx.console.printHelpLine("hk memory", "Internal heap and Home Key task stack headroom in bytes");
     openknx.console.printHelpLine("wifi <SSID> <password>", "Save WiFi and connect; available before ETS setup (local console)");
     openknx.console.printHelpLine("hk", "Show Home Key command syntax (local console)");
     openknx.console.printHelpLine("hk wifi <SSID> <password>", "Save WiFi and connect; also works before ETS setup");

@@ -11,11 +11,11 @@ esp_err_t Pn7161I2cTransport::init()
         return ESP_ERR_INVALID_ARG;
     if (dwl >= 0)
     {
-        digitalWrite(dwl, LOW);
         pinMode(dwl, OUTPUT);
+        digitalWrite(dwl, LOW);
     }
-    digitalWrite(ven, LOW);
     pinMode(ven, OUTPUT);
+    digitalWrite(ven, LOW);
     pinMode(irq, INPUT);
     if (wire.setBufferSize(258) < 258) return ESP_ERR_NO_MEM;
     if (!wire.begin(sda, scl, clock)) return ESP_FAIL;

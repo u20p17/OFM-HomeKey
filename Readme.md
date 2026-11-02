@@ -257,6 +257,13 @@ remains available.
 
 ## Dependencies and provenance
 
+The ESP32 Home Key web page uses the network module's `HtmlWriter`, which
+assembles its body in checked 512-byte chunks. It keeps the existing form token,
+code-change checks and browser-generated QR behavior while avoiding a complete
+HTML string and a second response-body copy on the ESP32 heap. Low-memory
+responses are HTTP 503; retry after other browser connections close. Firmware
+builds need the matching OFM-Network implementation of `HtmlWriter`.
+
 DigitalDoorKey and rednblkx/pn7160 are separately committed local wrappers.
 OAM pins HomeSpan 2.1.8, SHA
 `107ffc07f4455754ea89068d8cf2e992de3583e6`, with Arduino 3.3.8.

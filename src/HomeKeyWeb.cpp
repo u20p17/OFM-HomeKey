@@ -32,7 +32,8 @@ void HomeKeyModule::setupWeb()
         response.setHeader("Referrer-Policy", "same-origin");
         response.setLayout(true);
         response.setActiveMenu("/homekey");
-        std::string html = "<link rel='stylesheet' href='/assets/homekey.css'><div class='container homekey'>";
+        HtmlWriter html(response);
+        html += "<link rel='stylesheet' href='/assets/homekey.css'><div class='container homekey'>";
         html += "<h1>Home Key</h1><p>Apple Home Key wird unter Zutrittskontrolle in der ETS eingerichtet.</p>";
         html += "<section><h2>Setup-Code</h2><p>Zum Speichern m&uuml;ssen Apple Home Key und die NFC-Inbetriebnahme "
                 "in der ETS freigegeben und der Programmiermodus aktiv sein.</p>"
@@ -73,7 +74,6 @@ void HomeKeyModule::setupWeb()
                 "</tbody></table><p>Das Pairing-Fenster wird in der ETS oder an der lokalen USB-Konsole ge&ouml;ffnet. "
                 "Die Kopplung in Apple Home allein gew&auml;hrt keinen Zutritt.</p></section></div>"
                 "<script src='/assets/qrcode.js' defer></script><script src='/assets/homekey.js' defer></script>";
-        response.send(html.c_str());
     });
     web.addRoute(WEB_GET, "/homekey/status", [this](WebRequest&, WebResponse& response)
     {

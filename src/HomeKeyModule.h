@@ -9,6 +9,13 @@
 #include <freertos/queue.h>
 #include <freertos/task.h>
 
+#ifndef OPENKNX_HOMEKEY_NFC_STACK_SIZE
+#define OPENKNX_HOMEKEY_NFC_STACK_SIZE 12288
+#endif
+#ifndef OPENKNX_HOMEKEY_HAP_STACK_SIZE
+#define OPENKNX_HOMEKEY_HAP_STACK_SIZE 12288
+#endif
+
 class HomeKeyProvisioning;
 class HomeKeyModule : public OpenKNX::Module
 {

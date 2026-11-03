@@ -242,8 +242,15 @@ REG1 v00.11 uses `HOMEKEY_READER_I2C`: SDA=21, SCL=22, IRQ=14, VEN=13,
 DWL=19, address 0x28 at 400 kHz. Its Home Key TP, IP and TPIP environments
 exclude the legacy PN7160 owner and share the same NCI/ECP/authentication code.
 The I2C transport reads NCI headers and payloads separately, rejects incomplete
-transfers, bounds IRQ waits and standby address-NACK retries, and keeps the
-shared Wire bus alive when the reader stops. `HOMEKEY_PN7161_FIXED_3V3` selects
+transfers, bounds IRQ waits and retries a NACKed NCI frame up to three total
+attempts with 5 ms between attempts. Per [UM11495 §4.2.3](https://www.nxp.com/docs/en/user-manual/UM11495.pdf),
+any NACK requires resending the whole frame. Writes use Arduino's locked I2C
+HAL to preserve the ESP-IDF error that `Wire.endTransmission()` otherwise
+collapses to a generic failure: IDF 5.4/5.5 uses `ESP_ERR_INVALID_STATE` for a
+NACK, and IDF 6 uses `ESP_ERR_INVALID_RESPONSE`. Timeouts and other errors are
+returned without replay; an uninitialized bus is rejected before writing.
+A low-level NACK log can occur during standby wake-up even when the retry
+succeeds. The shared Wire bus stays alive when the reader stops. `HOMEKEY_PN7161_FIXED_3V3` selects
 the fixed-3.3 V PMU/TXLDO preset for VDD=VANT=3.3 V, as documented by the
 [module vendor](https://www.elechouse.com/docs/pn7161/). The SPI configuration
 retains its existing supply preset. Neither reader variant has been validated
@@ -259,9 +266,14 @@ remains available.
 
 `hk memory` reports free, largest-block and minimum-free internal heap and the
 Home Key tasks' minimum remaining stack space. The stack values are in bytes,
-out of 12288 bytes per task; zero means that task has not started. Run it after
-boot, web access, HomeKit pairing, and a Home Key authentication before
-considering smaller stacks. Idle headroom does not cover the cryptographic paths.
+reported alongside the configured size; zero minimum-free means that task has
+not started or has exhausted its stack margin. `OPENKNX_HOMEKEY_NFC_STACK_SIZE`
+and `OPENKNX_HOMEKEY_HAP_STACK_SIZE` default to 12288 bytes. REG1 sets each to
+8192 bytes, recovering 8192 bytes of heap with both tasks running. The NFC task
+starts only after HAP storage/crypto initialization, reducing startup allocation
+overlap. Run `hk memory` after boot, web access, HomeKit pairing and a Home Key
+authentication to check margins. Idle headroom alone does not cover all crypto
+paths; the REG1 sizes retain about 5 KiB beyond the observed startup usage.
 
 The ESP32 Home Key web page uses the network module's `HtmlWriter`, which
 assembles its body in checked 512-byte chunks. It keeps the existing form token,

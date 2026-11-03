@@ -1,6 +1,8 @@
 #if defined(OPENKNX_HOMEKEY_ENABLED) && defined(ARDUINO_ARCH_ESP32)
 #include "Pn7161I2cTransport.h"
 #include <Arduino.h>
+#include <esp32-hal-i2c.h>
+#include <esp_idf_version.h>
 #include <freertos/task.h>
 #include <cstring>
 
@@ -51,22 +53,29 @@ esp_err_t Pn7161I2cTransport::write(const uint8_t* buffer, size_t length)
 {
     if (!ready) return ESP_ERR_INVALID_STATE;
     if (!buffer || length == 0 || length > 258) return ESP_ERR_INVALID_ARG;
-    // UM11495: pending inbound data must be read before initiating a write.
-    if (wait_for_irq(false, pdMS_TO_TICKS(20)) != ESP_OK) return ESP_ERR_TIMEOUT;
+    // Wire collapses ESP-IDF 5.4/5.5 NACKs into status 4. Use its locked HAL
+    // to retain the error; TwoWire still owns bus initialization and reads.
+    if (!i2cIsInit(wire.getBusNum())) return ESP_ERR_INVALID_STATE;
+    esp_err_t status = ESP_FAIL;
     for (unsigned attempt = 0; attempt < 3; ++attempt)
     {
-        wire.beginTransmission(address);
-        const size_t written = wire.write(buffer, length);
-        const uint8_t status = wire.endTransmission();
-        if (written != length) return ESP_FAIL;
-        if (status == 0) return ESP_OK;
-        // Only address NACK is retried: it wakes a device in standby without
-        // accepting a packet. Never resend a possibly partly accepted frame.
-        if (status != 2) return ESP_FAIL;
+        // Let the NCI receiver drain pending notifications before writing.
+        if (wait_for_irq(false, pdMS_TO_TICKS(20)) != ESP_OK) return ESP_ERR_TIMEOUT;
+        status = i2cWrite(wire.getBusNum(), address, buffer, length, wire.getTimeOut());
+        if (status == ESP_OK) return ESP_OK;
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+        const bool nack = status == ESP_ERR_INVALID_RESPONSE;
+#elif ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
+        const bool nack = status == ESP_ERR_INVALID_STATE;
+#else
+        const bool nack = status == ESP_FAIL;
+#endif
+        // UM11495 section 4.2.3 requires resending the complete frame after
+        // any byte is NACKed (including standby wake-up). Never retry a timeout.
+        if (!nack || attempt == 2) return status;
         vTaskDelay(pdMS_TO_TICKS(5));
-        if (read_irq_level()) return ESP_ERR_TIMEOUT;
     }
-    return ESP_FAIL;
+    return status;
 }
 
 esp_err_t Pn7161I2cTransport::wait_for_irq(bool expected, TickType_t timeout)

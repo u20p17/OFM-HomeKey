@@ -51,17 +51,28 @@ void HomeKeyModule::loop()
     if (enabled && !started)
     {
         started = true;
-        if (xTaskCreate([](void* self) { static_cast<HomeKeyModule*>(self)->readerTask(); }, "HomeKeyNfc", 12288, this, 1, &readerHandle) != pdPASS ||
-            xTaskCreate([](void* self)
+        if (xTaskCreate([](void* self)
             {
                 auto& module = *static_cast<HomeKeyModule*>(self);
                 module.provisioning->begin();
                 for (;;) { module.provisioning->poll(); vTaskDelay(pdMS_TO_TICKS(10)); }
-            }, "HomeKeyHap", 12288, this, 1, &hapHandle) != pdPASS)
+            }, "HomeKeyHap", OPENKNX_HOMEKEY_HAP_STACK_SIZE, this, 1, &hapHandle) != pdPASS)
         {
             fatal = true;
             enabled = false;
             logErrorP("Home Key task creation failed; reboot required");
+        }
+    }
+    // Start the NFC worker after HAP's storage/crypto initialization releases
+    // its temporary allocations; the reader cannot do useful work before then.
+    if (enabled && provisioningReady && !readerHandle)
+    {
+        if (xTaskCreate([](void* self) { static_cast<HomeKeyModule*>(self)->readerTask(); },
+            "HomeKeyNfc", OPENKNX_HOMEKEY_NFC_STACK_SIZE, this, 1, &readerHandle) != pdPASS)
+        {
+            fatal = true;
+            enabled = false;
+            logErrorP("Home Key NFC task creation failed; reboot required");
         }
     }
     if (!enabled || !pairingPermitted)
@@ -424,9 +435,11 @@ void HomeKeyModule::showMemory()
     logInfoP("Internal heap: free=%u largest=%u minimum=%u bytes",
         unsigned(heap_caps_get_free_size(caps)), unsigned(heap_caps_get_largest_free_block(caps)),
         unsigned(heap_caps_get_minimum_free_size(caps)));
-    logInfoP("HomeKey stack minimum free: NFC=%u HAP=%u bytes (12288 each)",
+    logInfoP("HomeKey stack minimum free/size: NFC=%u/%u HAP=%u/%u bytes",
         readerHandle ? unsigned(uxTaskGetStackHighWaterMark(readerHandle)) : 0,
-        hapHandle ? unsigned(uxTaskGetStackHighWaterMark(hapHandle)) : 0);
+        unsigned(OPENKNX_HOMEKEY_NFC_STACK_SIZE),
+        hapHandle ? unsigned(uxTaskGetStackHighWaterMark(hapHandle)) : 0,
+        unsigned(OPENKNX_HOMEKEY_HAP_STACK_SIZE));
 
 }
 

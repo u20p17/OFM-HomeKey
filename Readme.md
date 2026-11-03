@@ -278,6 +278,15 @@ overlap. Run `hk memory` after boot, web access, HomeKit pairing and a Home Key
 authentication to check margins. Idle headroom alone does not cover all crypto
 paths; the REG1 sizes retain about 5 KiB beyond the observed startup usage.
 
+The Home Key page follows OAM-NeoPixel Studio's compact tabs, green actions,
+rounded controls and bordered cards. `Setup-Code`, `Apple Home` and `Status`
+separate code configuration, local QR generation and live commissioning status.
+Arrow keys plus Home/End navigate the tabs; leaving the Apple Home tab clears
+the QR code and its input. The responsive layout stacks cards on small screens.
+Disabled setup-code actions name the missing ETS permission or programming-mode
+requirement instead of showing only a generic warning. No commissioning or
+authorization gates are changed.
+
 The ESP32 Home Key web page uses the network module's `HtmlWriter`, which
 assembles its body in checked 512-byte chunks. It keeps the existing form token,
 code-change checks and browser-generated QR behavior while avoiding a complete

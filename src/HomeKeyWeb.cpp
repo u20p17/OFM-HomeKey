@@ -4,6 +4,7 @@
 #include "HomeKeyCodeRequest.h"
 #include "NetworkModule.h"
 #include "webassets.h"
+#include "buildtime.h"
 #include <esp_random.h>
 #include <sodium.h>
 
@@ -33,47 +34,89 @@ void HomeKeyModule::setupWeb()
         response.setLayout(true);
         response.setActiveMenu("/homekey");
         HtmlWriter html(response);
-        html += "<link rel='stylesheet' href='/assets/homekey.css'><div class='container homekey'>";
-        html += "<h1>Home Key</h1><p>Apple Home Key wird unter Zutrittskontrolle in der ETS eingerichtet.</p>";
-        html += "<section><h2>Setup-Code</h2><p>Zum Speichern m&uuml;ssen Apple Home Key und die NFC-Inbetriebnahme "
-                "in der ETS freigegeben und der Programmiermodus aktiv sein.</p>"
-                "<p>Nur in einem vertrauensw&uuml;rdigen Netzwerk verwenden: HTTP ist nicht verschl&uuml;sselt. "
-                "Der gespeicherte Code wird nicht angezeigt. Das Speichern &ouml;ffnet kein Pairing-Fenster.</p>"
-                "<p>Entwicklungsversion: Die Webkonsole hat keine Anmeldung. "
-                "Geben Sie in der Webkonsole keine Passw&ouml;rter oder Setup-Codes ein; "
-                "eingegebene Befehle werden anderen verbundenen Konsolen angezeigt.</p>";
-        html += "<form id='homekey-form' data-token='" + webToken + "'>"
-                "<div id='homekey-previous-row' hidden><label for='homekey-previous'>Bisheriger Setup-Code (8 Ziffern)</label>"
-                "<input id='homekey-previous' type='password' inputmode='numeric' pattern='[0-9]{8}' "
-                "minlength='8' maxlength='8' autocomplete='current-password'></div>"
-                "<label for='homekey-code'>Neuer Setup-Code (8 Ziffern)</label>"
-                "<input id='homekey-code' type='password' inputmode='numeric' pattern='[0-9]{8}' minlength='8' "
-                "maxlength='8' autocomplete='new-password' required>"
-                "<label for='homekey-confirm'>Setup-Code wiederholen</label>"
-                "<input id='homekey-confirm' type='password' inputmode='numeric' pattern='[0-9]{8}' minlength='8' "
-                "maxlength='8' autocomplete='new-password' required>"
-                "<button id='homekey-save' type='submit' disabled>Setup-Code speichern</button></form>"
-                "<p id='homekey-permission'></p><p id='homekey-result' role='status' aria-live='polite'></p>"
-                "</section><section><h2>In Apple Home hinzuf&uuml;gen</h2>"
-                "<p>&Ouml;ffnen Sie das Pairing-Fenster in der ETS. Geben Sie den aktuellen Setup-Code ein "
-                "und scannen Sie den QR-Code mit der iPhone-Kamera oder in Apple Home unter "
-                "&bdquo;Ger&auml;t hinzuf&uuml;gen&ldquo;. iPhone und Ger&auml;t m&uuml;ssen im selben Netzwerk sein.</p>"
-                "<p>Der QR-Code wird nur in diesem Browser erzeugt und enth&auml;lt den eingegebenen Setup-Code. "
-                "Nicht weitergeben. Ein falscher Code verhindert die Kopplung; die Eingabe wird hier nicht gepr&uuml;ft.</p>"
-                "<form id='homekey-qr-form'><label for='homekey-qr-code'>Aktueller Setup-Code (8 Ziffern)</label>"
-                "<input id='homekey-qr-code' type='password' inputmode='numeric' pattern='[0-9]{8}' "
-                "minlength='8' maxlength='8' autocomplete='off' required>"
-                "<button id='homekey-qr-show' type='submit' disabled>QR-Code anzeigen</button></form>"
-                "<p id='homekey-qr-result' role='status' aria-live='polite'></p>"
-                "<div id='homekey-qr' role='img' aria-label='Apple Home Kopplungs-QR-Code' hidden></div>"
-                "<button id='homekey-qr-hide' type='button' hidden>QR-Code ausblenden</button>"
-                "</section><section><h2>Status</h2><table class='attribute-table'><tbody>"
-                "<tr><td>Apple Home Key</td><td id='homekey-enabled'>Wird abgefragt</td></tr>"
-                "<tr><td>NFC-Inbetriebnahme</td><td id='homekey-commissioning'>Wird abgefragt</td></tr>"
-                "<tr><td>Pairing-Fenster</td><td id='homekey-pairing'>Wird abgefragt</td></tr>"
-                "</tbody></table><p>Das Pairing-Fenster wird in der ETS oder an der lokalen USB-Konsole ge&ouml;ffnet. "
-                "Die Kopplung in Apple Home allein gew&auml;hrt keinen Zutritt.</p></section></div>"
-                "<script src='/assets/qrcode.js' defer></script><script src='/assets/homekey.js' defer></script>";
+        const std::string assetVersion = std::to_string(BUILD_TIMESTAMP);
+        html += "<link rel=\"stylesheet\" href=\"/assets/homekey.css?v=";
+        html += assetVersion;
+        html += R"HTML(">
+<div class="container homekey" id="homekey-page">
+  <div class="homekey-title"><h1>Home Key</h1><p>Apple Home einrichten &amp; Zutritt verwalten</p></div>
+  <div class="homekey-toolbar" role="status" aria-live="polite"><span class="homekey-dot" id="homekey-connection" data-state="waiting" aria-hidden="true"></span><span id="homekey-summary">Ger&auml;testatus wird abgefragt&hellip;</span></div>
+  <noscript><p class="homekey-notice">Bitte JavaScript aktivieren, um Home Key einzurichten.</p></noscript>
+  <div class="homekey-tabs" role="tablist" aria-label="Home Key Bereiche">
+    <button type="button" id="homekey-tab-setup" role="tab" aria-selected="true" aria-controls="homekey-panel-setup">Setup-Code</button>
+    <button type="button" id="homekey-tab-pairing" role="tab" aria-selected="false" aria-controls="homekey-panel-pairing" tabindex="-1">Apple Home</button>
+    <button type="button" id="homekey-tab-status" role="tab" aria-selected="false" aria-controls="homekey-panel-status" tabindex="-1">Status</button>
+  </div>
+  <section id="homekey-panel-setup" role="tabpanel" aria-labelledby="homekey-tab-setup" tabindex="0">
+    <div class="homekey-grid">
+      <div class="homekey-card">
+        <div class="homekey-card-heading"><h2>Setup-Code festlegen</h2><span class="homekey-badge">1. Einrichtung</span></div>
+        <p class="homekey-note">Dieser Code wird f&uuml;r die Kopplung in Apple Home verwendet. Der gespeicherte Code wird nicht angezeigt.</p>
+        <p class="homekey-notice" id="homekey-permission" role="status">Freigaben werden gepr&uuml;ft&hellip;</p>
+        <form id="homekey-form" data-token=")HTML";
+        html += webToken;
+        html += R"HTML(">
+          <div id="homekey-previous-row" hidden><label for="homekey-previous">Bisheriger Setup-Code</label><input id="homekey-previous" type="password" inputmode="numeric" pattern="[0-9]{8}" minlength="8" maxlength="8" autocomplete="current-password"></div>
+          <div class="homekey-field"><label for="homekey-code">Neuer Setup-Code</label><input id="homekey-code" type="password" inputmode="numeric" pattern="[0-9]{8}" minlength="8" maxlength="8" autocomplete="new-password" aria-describedby="homekey-code-help" required></div>
+          <div class="homekey-field"><label for="homekey-confirm">Setup-Code wiederholen</label><input id="homekey-confirm" type="password" inputmode="numeric" pattern="[0-9]{8}" minlength="8" maxlength="8" autocomplete="new-password" required></div>
+          <p class="homekey-hint" id="homekey-code-help">Acht Ziffern, keine Buchstaben. Gleiche Ziffern und einfache Folgen sind nicht erlaubt.</p>
+          <div class="homekey-actions"><button class="homekey-primary" id="homekey-save" type="submit" disabled>Setup-Code speichern</button></div>
+        </form>
+        <p class="homekey-result" id="homekey-result" role="status" aria-live="polite"></p>
+      </div>
+      <aside class="homekey-card">
+        <div class="homekey-card-heading"><h2>Voraussetzungen</h2></div>
+        <ol class="homekey-steps">
+          <li><strong>In der ETS freigeben</strong><p>&bdquo;Apple Home Key aktivieren&ldquo; und &bdquo;NFC-Inbetriebnahme &uuml;ber USB/KNX erlauben&ldquo; auf Ja setzen. Anschlie&szlig;end die Parameter laden.</p></li>
+          <li><strong>Programmiermodus einschalten</strong><p>Die Programmiertaste am Ger&auml;t dr&uuml;cken. Der Programmiermodus muss beim Speichern aktiv sein.</p></li>
+          <li><strong>Code speichern</strong><p>Den neuen achtstelligen Code zweimal eingeben. Danach im Tab Apple Home mit der Kopplung fortfahren.</p></li>
+        </ol>
+        <p class="homekey-hint">Das Speichern &ouml;ffnet noch kein Pairing-Fenster.</p>
+      </aside>
+    </div>
+    <details class="homekey-help"><summary>Hinweise zum Umgang mit Setup-Codes</summary><p>Nur in einem vertrauensw&uuml;rdigen lokalen Netzwerk verwenden: HTTP ist nicht verschl&uuml;sselt. Die Webkonsole dieser Entwicklungsversion hat keine Anmeldung. Dort keine Passw&ouml;rter oder Setup-Codes eingeben; Befehle werden anderen verbundenen Konsolen angezeigt.</p></details>
+  </section>
+  <section id="homekey-panel-pairing" role="tabpanel" aria-labelledby="homekey-tab-pairing" tabindex="0" hidden>
+    <div class="homekey-grid">
+      <div class="homekey-card">
+        <div class="homekey-card-heading"><h2>In Apple Home hinzuf&uuml;gen</h2><span class="homekey-badge">2. Kopplung</span></div>
+        <ol class="homekey-steps">
+          <li><strong>Pairing-Fenster &ouml;ffnen</strong><p>In der ETS &bdquo;Pairing &ouml;ffnen (5 Minuten)&ldquo; w&auml;hlen. Die Programmiertaste allein &ouml;ffnet kein Pairing-Fenster.</p></li>
+          <li><strong>Setup-Code eingeben</strong><p>Den zuvor gespeicherten Code verwenden. iPhone und Ger&auml;t m&uuml;ssen im selben Netzwerk sein.</p></li>
+        </ol>
+        <form id="homekey-qr-form"><div class="homekey-field"><label for="homekey-qr-code">Aktueller Setup-Code (8 Ziffern)</label><input id="homekey-qr-code" type="password" inputmode="numeric" pattern="[0-9]{8}" minlength="8" maxlength="8" autocomplete="off" required></div><div class="homekey-actions"><button class="homekey-primary" id="homekey-qr-show" type="submit" disabled>QR-Code anzeigen</button></div></form>
+        <p class="homekey-result" id="homekey-qr-result" role="status" aria-live="polite"></p>
+      </div>
+      <div class="homekey-card homekey-qr-card">
+        <div class="homekey-card-heading"><h2>Kopplungs-QR-Code</h2></div>
+        <p class="homekey-note" id="homekey-qr-placeholder">Nach der Freigabe erscheint hier der QR-Code. Mit der iPhone-Kamera oder in Apple Home unter &bdquo;Ger&auml;t hinzuf&uuml;gen&ldquo; scannen.</p>
+        <div id="homekey-qr" role="img" aria-label="Apple Home Kopplungs-QR-Code" hidden></div>
+        <button id="homekey-qr-hide" type="button" hidden>QR-Code ausblenden</button>
+        <p class="homekey-hint">Der QR-Code enth&auml;lt den eingegebenen Setup-Code. Er wird nur in diesem Browser erzeugt und nicht weitergegeben. Ein falscher Code verhindert die Kopplung.</p>
+      </div>
+    </div>
+  </section>
+  <section id="homekey-panel-status" role="tabpanel" aria-labelledby="homekey-tab-status" tabindex="0" hidden>
+    <div class="homekey-grid">
+      <div class="homekey-card">
+        <div class="homekey-card-heading"><h2>Ger&auml;testatus</h2><span class="homekey-badge">Live</span></div>
+        <table class="attribute-table"><tbody>
+          <tr><td>Apple Home Key</td><td><span class="homekey-badge" id="homekey-enabled">Wird abgefragt</span></td></tr>
+          <tr><td>NFC-Inbetriebnahme</td><td><span class="homekey-badge" id="homekey-commissioning">Wird abgefragt</span></td></tr>
+          <tr><td>Pairing-Fenster</td><td><span class="homekey-badge" id="homekey-pairing">Wird abgefragt</span></td></tr>
+        </tbody></table>
+        <p class="homekey-hint">Der Status wird automatisch aktualisiert. Das Pairing-Fenster l&auml;sst sich in der ETS oder an der lokalen USB-Konsole &ouml;ffnen.</p>
+      </div>
+      <aside class="homekey-card"><div class="homekey-card-heading"><h2>Zutritt erlauben</h2></div><p class="homekey-note">Die Kopplung in Apple Home allein gew&auml;hrt keinen Zutritt. Provisionierte Endpoints m&uuml;ssen einer freigegebenen NFC-Aktions-ID zugeordnet werden.</p><p class="homekey-hint">Berechtigungen werden unter Zutrittskontrolle in der ETS eingerichtet.</p></aside>
+    </div>
+  </section>
+</div>
+)HTML";
+        html += "<script src=\"/assets/qrcode.js?v=";
+        html += assetVersion;
+        html += "\" defer></script><script src=\"/assets/homekey.js?v=";
+        html += assetVersion;
+        html += "\" defer></script>";
     });
     web.addRoute(WEB_GET, "/homekey/status", [this](WebRequest&, WebResponse& response)
     {

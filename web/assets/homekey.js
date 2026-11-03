@@ -24,6 +24,30 @@
         result.dataset.error = String(error);
     }
 
+    const tabs = ['setup', 'pairing', 'status'];
+    function selectTab(name) {
+        for (const tab of tabs) {
+            document.getElementById('homekey-panel-' + tab).hidden = tab !== name;
+            const button = document.getElementById('homekey-tab-' + tab);
+            button.setAttribute('aria-selected', String(tab === name));
+            button.tabIndex = tab === name ? 0 : -1;
+        }
+        if (name !== 'pairing') clearQr();
+    }
+    tabs.forEach((tab, index) => {
+        const button = document.getElementById('homekey-tab-' + tab);
+        button.addEventListener('click', () => selectTab(tab));
+        button.addEventListener('keydown', event => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            event.preventDefault();
+            const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 :
+                (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+            selectTab(tabs[next]);
+            document.getElementById('homekey-tab-' + tabs[next]).focus();
+        });
+    });
+    selectTab('setup');
+
     function validCode(value) {
         return /^\d{8}$/.test(value) && !/^(\d)\1{7}$/.test(value) &&
             value !== '12345678' && value !== '87654321';
@@ -32,6 +56,7 @@
     function clearQr() {
         qrImage.replaceChildren();
         qrImage.hidden = qrHide.hidden = true;
+        document.getElementById('homekey-qr-placeholder').hidden = false;
         qrCode.value = '';
     }
 
@@ -39,6 +64,7 @@
     qrCode.addEventListener('input', () => {
         qrImage.replaceChildren();
         qrImage.hidden = qrHide.hidden = true;
+        document.getElementById('homekey-qr-placeholder').hidden = false;
     });
     window.addEventListener('pagehide', clearQr);
     qrForm.addEventListener('submit', event => {
@@ -58,6 +84,7 @@
             qr.make();
             qrImage.innerHTML = qr.createSvgTag({ cellSize: 8, margin: 32, scalable: true });
             qrImage.hidden = qrHide.hidden = false;
+            document.getElementById('homekey-qr-placeholder').hidden = true;
             qrResult.textContent = 'Jetzt mit dem iPhone scannen. Die Kopplung allein gewährt keinen Zutritt.';
         } catch (error) {
             clearQr();
@@ -81,14 +108,30 @@
             }
             previousRow.hidden = !status.codeConfigured;
             previous.required = status.codeConfigured;
-            document.getElementById('homekey-enabled').textContent = status.enabled ? 'Aktiviert' : 'Deaktiviert';
-            document.getElementById('homekey-commissioning').textContent = status.commissioning ? 'Erlaubt' : 'Gesperrt';
-            document.getElementById('homekey-pairing').textContent = status.pairing ? 'Geöffnet' : 'Geschlossen';
+            for (const [id, active, yes, no] of [
+                ['homekey-enabled', status.enabled, 'Aktiviert', 'Deaktiviert'],
+                ['homekey-commissioning', status.commissioning, 'Erlaubt', 'Gesperrt'],
+                ['homekey-pairing', status.pairing, 'Geöffnet', 'Geschlossen']
+            ]) {
+                const badge = document.getElementById(id);
+                badge.textContent = active ? yes : no;
+                badge.dataset.state = active ? 'on' : 'off';
+            }
+            document.getElementById('homekey-connection').dataset.state = 'ready';
+            document.getElementById('homekey-summary').textContent = !status.enabled
+                ? 'Apple Home Key ist in der ETS deaktiviert.'
+                : !status.commissioning ? 'Home Key aktiv · NFC-Inbetriebnahme in der ETS gesperrt'
+                : status.pairing ? 'Home Key aktiv · Pairing-Fenster geöffnet'
+                : status.codeConfigured ? 'Home Key aktiv · Setup-Code gespeichert'
+                : 'Home Key aktiv · Noch kein Setup-Code gespeichert';
+            permission.dataset.state = status.canSetCode && !status.retryAfter ? 'ready' : 'waiting';
             permission.textContent = status.retryAfter
                 ? `Zu viele Fehlversuche. In ${status.retryAfter} Sekunden erneut versuchen.`
+                : !status.enabled ? 'In der ETS „Apple Home Key aktivieren“ auf Ja setzen und die Parameter laden.'
+                : !status.commissioning ? 'In der ETS „NFC-Inbetriebnahme über USB/KNX erlauben“ auf Ja setzen und die Parameter laden.'
                 : status.canSetCode
-                ? status.codeConfigured ? 'Zum Ändern den bisherigen Setup-Code eingeben.' : 'Ersten Setup-Code festlegen.'
-                : 'Zum Speichern ETS-Freigaben aktivieren und Programmiermodus einschalten.';
+                ? status.codeConfigured ? 'Freigabe aktiv. Zum Ändern den bisherigen Setup-Code eingeben.' : 'Freigabe aktiv. Ersten Setup-Code festlegen.'
+                : 'Programmiermodus am Gerät einschalten. Falls er bereits aktiv ist, die Initialisierung abwarten.';
             save.disabled = !status.canSetCode || status.retryAfter > 0 || submitting || waiting || status.codeState === 1;
             if (status.codeState !== lastState || waiting) {
                 if (status.codeState === 1) message('Setup-Code wird gespeichert.');
@@ -106,6 +149,9 @@
             qrResult.textContent = 'Keine Verbindung zum Gerät; QR-Code ausgeblendet.';
             save.disabled = true;
             permission.textContent = 'Keine Verbindung zum Gerät.';
+            permission.dataset.state = 'waiting';
+            document.getElementById('homekey-connection').dataset.state = 'offline';
+            document.getElementById('homekey-summary').textContent = 'Keine Verbindung zum Gerät. Verbindung wird erneut versucht.';
             message(error.message, true);
         }
     }

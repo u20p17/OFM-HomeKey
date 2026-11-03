@@ -112,12 +112,15 @@ void HomeKeyModule::loop()
             break;
         }
         bool granted = false;
+        const char* reason = event.reason;
         if (store.healthy && event.generation == store.generation)
         {
             if (event.kind == EventKind::Authenticated && store.contains(event.issuer, event.endpoint))
             {
                 auto id = lookupAccessId(event.issuer, event.endpoint);
                 granted = id != HomeKey::InvalidId && openknxAccessControl.processHomeKeyCredential(id);
+                reason = id == HomeKey::InvalidId ? "authenticated endpoint has no action-ID mapping"
+                    : "access control blocked (lock, delay, or action-ID unavailable)";
             }
             else if (event.kind == EventKind::Uid && allowUid)
             {
@@ -125,11 +128,15 @@ void HomeKeyModule::loop()
                 size_t count = 0;
                 for (const auto& mapping : activeMappings()) reserved[count++] = mapping.accessId;
                 granted = openknxAccessControl.processExternalNfcUid(event.uid, event.uidLength, reserved, count);
+                reason = "UID credential not authorized";
             }
+            else if (event.kind == EventKind::Authenticated)
+                reason = "authenticated endpoint missing from credential store";
         }
+        else reason = !store.healthy ? "credential storage unavailable" : "credential/policy changed during scan; retry";
         if (!granted)
         {
-            logInfoP("NFC access denied; credential not accepted or not authorized");
+            logInfoP("NFC access denied: %s", reason);
             openknxAccessControl.rejectExternalCredential();
         }
         else logInfoP("NFC access granted (%s)", event.kind == EventKind::Authenticated ? "Home Key" : "UID");

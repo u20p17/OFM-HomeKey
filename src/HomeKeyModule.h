@@ -52,6 +52,7 @@ class HomeKeyModule : public OpenKNX::Module
     struct Event
     {
         EventKind kind = EventKind::Denied;
+        const char* reason = "credential not accepted";
         HomeKey::IssuerId issuer{};
         HomeKey::EndpointId endpoint{};
         uint32_t generation = 0;

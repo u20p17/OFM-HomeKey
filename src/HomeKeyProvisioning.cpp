@@ -86,7 +86,8 @@ namespace
             HK_HomeKit context(module.store, [this]() { module.store.eraseReaderKey(); }, data);
             auto response = context.processResult();
             module.store.save();
-            if (response.empty() || !module.store.healthy) return false;
+            const bool missingReaderKey = value == 1 && input.find(6) != input.end() && module.store.identity.private_key.empty();
+            if (!module.store.healthy || (response.empty() && !missingReaderKey)) return false;
             TLV8 output(nullptr, 0); output.unpack(response.data(), response.size());
             control->setTLV(output, false);
             state->setVal(module.store.identity.private_key.size() == 32 ? 1 : 0);

@@ -7,7 +7,7 @@ repository's exact commit in `dependencies.txt` and links its local checkout.
 ## Runtime and authorization
 
 HomeSpan exposes a lock accessory and NFC Access provisioning service. A
-separate worker owns the PN7161 SPI/NCI reader. DigitalDoorKey runs its Home Key
+separate worker owns the PN7161 I2C/NCI reader. DigitalDoorKey runs its Home Key
 profile through explicit `FlowState::Done`, validates the authentication outcome,
 and persists updated endpoint keys before queuing an authorization result.
 Only the OpenKNX thread invokes the private OFM-AccessControl friend adapter.
@@ -233,10 +233,13 @@ Hardware commissioning remains a validation plan: no phone/watch has been
 provisioned on this board during these software checks.
 
 Lock feedback is KO 11, 1=physically locked; its initial HomeKit state is Unknown.
-The XIAO PN7161 prototype pins are CS=GPIO1, SCLK=7, MISO=8, MOSI=9, IRQ=3, VEN=4.
-The reference adapter includes its PMU configuration; confirm supply, module
-variant, RF tuning and carrier wiring before flashing. This SPI profile cannot
-be combined with the fingerprint/relay peripheral profile using those pins.
+The XIAO Apple Home Key TP and IP targets use `HOMEKEY_READER_I2C`:
+SDA=GPIO5 (D4), SCL=GPIO6 (D5), IRQ=GPIO3 (D2), VEN=GPIO4 (D3),
+DWL=GPIO2 (D1), address 0x28 at 400 kHz. VDD and VANT both connect to
+3.3 V, with common ground. Both select `HOMEKEY_PN7161_FIXED_3V3` and hold
+DWL low from setup. This wiring cannot be combined with the optional
+fingerprint/relay peripheral profile. Earlier XIAO SPI builds are incompatible
+with this I2C module and must be replaced.
 
 REG1 v00.11 uses `HOMEKEY_READER_I2C`: SDA=21, SCL=22, IRQ=14, VEN=13,
 DWL=19, address 0x28 at 400 kHz. Its Home Key TP, IP and TPIP environments
@@ -252,9 +255,9 @@ returned without replay; an uninitialized bus is rejected before writing.
 A low-level NACK log can occur during standby wake-up even when the retry
 succeeds. The shared Wire bus stays alive when the reader stops. `HOMEKEY_PN7161_FIXED_3V3` selects
 the fixed-3.3 V PMU/TXLDO preset for VDD=VANT=3.3 V, as documented by the
-[module vendor](https://www.elechouse.com/docs/pn7161/). The SPI configuration
-retains its existing supply preset. Neither reader variant has been validated
-with a phone/watch by these software checks.
+[module vendor](https://www.elechouse.com/docs/pn7161/). Both board profiles use
+this preset. Neither board has been validated with a phone/watch by these
+software checks.
 
 HomeKit's model can be set with `HOMEKEY_DEVICE_MODEL`. Build-time
 `OPENKNX_WIFI_SSID`/`OPENKNX_WIFI_PASSWORD` credentials are also supplied to

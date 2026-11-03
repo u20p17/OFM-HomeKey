@@ -146,6 +146,7 @@ void HomeKeyProvisioning::begin()
 #endif
     module.qrSetupId = HomeKey::pairingSetupId(mac);
     homeSpan.setQRID(module.qrSetupId.data());
+    homeSpan.setPortNum(1201);
     homeSpan.begin(Category::Locks, "OpenKNX Home Key", "OpenKNX-HK-", "OpenKNX");
     new SpanAccessory();
     new AccessoryInfo();

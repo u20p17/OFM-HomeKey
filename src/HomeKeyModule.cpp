@@ -90,6 +90,21 @@ void HomeKeyModule::loop()
     for (unsigned i = 0; i < 4 && xQueueReceive(events, &event, 0) == pdTRUE; ++i)
     {
         if (!enabled) continue;
+        if (event.kind == EventKind::ReaderReady)
+        {
+            logInfoP("NFC reader initialized; RF discovery active");
+            continue;
+        }
+        if (event.kind == EventKind::ReaderFailed)
+        {
+            logWarningP("NFC reader initialization/discovery failed; retrying in 5 seconds");
+            continue;
+        }
+        if (event.kind == EventKind::TagDetected)
+        {
+            logInfoP("NFC tag detected; checking credential");
+            continue;
+        }
         std::unique_lock<std::recursive_mutex> guard(store.mutex, std::try_to_lock);
         if (!guard.owns_lock())
         {
@@ -112,7 +127,12 @@ void HomeKeyModule::loop()
                 granted = openknxAccessControl.processExternalNfcUid(event.uid, event.uidLength, reserved, count);
             }
         }
-        if (!granted) openknxAccessControl.rejectExternalCredential();
+        if (!granted)
+        {
+            logInfoP("NFC access denied; credential not accepted or not authorized");
+            openknxAccessControl.rejectExternalCredential();
+        }
+        else logInfoP("NFC access granted (%s)", event.kind == EventKind::Authenticated ? "Home Key" : "UID");
     }
 }
 
@@ -175,6 +195,9 @@ void HomeKeyModule::readerTask()
         if (!connected)
         {
             connected = reader->init() && reader->beginDiscovery();
+            Event diagnostic;
+            diagnostic.kind = connected ? EventKind::ReaderReady : EventKind::ReaderFailed;
+            enqueue(diagnostic);
             if (!connected) { reader->stop(); vTaskDelay(pdMS_TO_TICKS(5000)); continue; }
             appliedGeneration = generation;
         }
@@ -188,6 +211,9 @@ void HomeKeyModule::readerTask()
         uint8_t sak = 0;
         if (reader->pollForTag(uid, atqa, sak, 250))
         {
+            Event diagnostic;
+            diagnostic.kind = EventKind::TagDetected;
+            enqueue(diagnostic);
             handleTag(uid, sak);
             while (enabled && reader->isTagStillPresent()) vTaskDelay(pdMS_TO_TICKS(100));
             reader->releaseTag();

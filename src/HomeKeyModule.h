@@ -48,7 +48,7 @@ class HomeKeyModule : public OpenKNX::Module
     QueueHandle_t webCommands = nullptr;
     std::string webToken;
 #endif
-    enum class EventKind : uint8_t { Denied, Uid, Authenticated };
+    enum class EventKind : uint8_t { Denied, Uid, Authenticated, ReaderReady, ReaderFailed, TagDetected };
     struct Event
     {
         EventKind kind = EventKind::Denied;

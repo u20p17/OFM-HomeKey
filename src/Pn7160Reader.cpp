@@ -70,17 +70,24 @@ bool Pn7160Reader::init() {
         stop();
         return false;
     }
-    #ifdef HOMEKEY_PN7161_FIXED_3V3
+    #ifdef HOMEKEY_PN7161_VANT_MV
     {
-        // ELECHOUSE fixed-3.3 V VBAT/VANT preset. Apply every initialization:
-        // VANT is not auto-detected and a previously stored 5 V preset is unsafe.
+    #if HOMEKEY_PN7161_VANT_MV == 3300
         const std::vector<uint8_t> pmu = {
             0x01, 0xA0, 0x0E, 0x0B, 0x11, 0x01, 0x02, 0x02,
             0x00, 0x00, 0x1E, 0x00, 0x00, 0x10, 0x0C
         };
+    #elif HOMEKEY_PN7161_VANT_MV == 5000
+        const std::vector<uint8_t> pmu = {
+            0x01, 0xA0, 0x0E, 0x0B, 0x11, 0x01, 0x01, 0x01,
+            0x00, 0x00, 0x00, 0x40, 0x00, 0xD0, 0x0C
+        };
+    #else
+        #error HOMEKEY_PN7161_VANT_MV must be 3300 or 5000
+    #endif
         if (m_nci->core_set_config(pmu) != nci::STATUS_OK)
         {
-            ESP_LOGE(TAG, "Failed to configure PN7161 for 3.3 V VANT");
+            ESP_LOGE(TAG, "Failed to configure PN7161 for %d mV VANT", HOMEKEY_PN7161_VANT_MV);
             stop();
             return false;
         }

@@ -235,8 +235,8 @@ provisioned on this board during these software checks.
 Lock feedback is KO 11, 1=physically locked; its initial HomeKit state is Unknown.
 The XIAO Apple Home Key TP and IP targets use `HOMEKEY_READER_I2C`:
 SDA=GPIO5 (D4), SCL=GPIO6 (D5), IRQ=GPIO3 (D2), VEN=GPIO4 (D3),
-DWL=GPIO2 (D1), address 0x28 at 400 kHz. VDD and VANT both connect to
-3.3 V, with common ground. Both select `HOMEKEY_PN7161_FIXED_3V3` and hold
+DWL=GPIO2 (D1), address 0x28 at 400 kHz. VDD connects to 3.3 V and VANT
+to 5 V, with common ground. Both select `HOMEKEY_PN7161_VANT_MV=5000` and hold
 DWL low from setup. This wiring cannot be combined with the optional
 fingerprint/relay peripheral profile. Earlier XIAO SPI builds are incompatible
 with this I2C module and must be replaced.
@@ -253,11 +253,16 @@ collapses to a generic failure: IDF 5.4/5.5 uses `ESP_ERR_INVALID_STATE` for a
 NACK, and IDF 6 uses `ESP_ERR_INVALID_RESPONSE`. Timeouts and other errors are
 returned without replay; an uninitialized bus is rejected before writing.
 A low-level NACK log can occur during standby wake-up even when the retry
-succeeds. The shared Wire bus stays alive when the reader stops. `HOMEKEY_PN7161_FIXED_3V3` selects
-the fixed-3.3 V PMU/TXLDO preset for VDD=VANT=3.3 V, as documented by the
-[module vendor](https://www.elechouse.com/docs/pn7161/). Both board profiles use
-this preset. Neither board has been validated with a phone/watch by these
-software checks.
+succeeds. The shared Wire bus stays alive when the reader stops.
+`HOMEKEY_PN7161_VANT_MV` selects the PMU/TXLDO preset in each environment's
+inherited `build_flags`: REG1 uses `3300` (VDD=VANT=3.3 V), while XIAO uses
+`5000` (VDD=3.3 V, VANT=5 V). Only these two values are supported. The complete
+preset is applied on every reader initialization, following the
+[module vendor](https://www.elechouse.com/docs/pn7161/) configuration.
+The flag configures the reader; it does not change the physical supply voltage.
+Power down before changing VANT wiring or presets, then cold-start with matching
+firmware. Never apply 5 V to VDD or ESP32-facing signals. Neither board has been
+validated with a phone/watch by these software checks.
 
 HomeKit's model can be set with `HOMEKEY_DEVICE_MODEL`. Build-time
 `OPENKNX_WIFI_SSID`/`OPENKNX_WIFI_PASSWORD` credentials are also supplied to

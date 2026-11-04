@@ -7,4 +7,4 @@ Hier können neben Apple Home Key auch herkömmliche NFC-Tags über ihre UID ver
 
 Die UID eines herkömmlichen Tags ist kein kryptografischer Identitätsnachweis. Verwenden Sie diese Freigabe nur, wenn solche Tags ausdrücklich benötigt werden. Ein fehlgeschlagener Home-Key-Authentifizierungsversuch wird nicht als UID-Zutritt behandelt.
 
-NFC-Aktions-IDs, die für Home-Key-Berechtigungen verwendet werden, stehen nicht gleichzeitig für UID-Tags zur Verfügung.
+NFC-Tag-IDs, die für Home-Key-Berechtigungen verwendet werden, stehen nicht gleichzeitig für UID-Tags zur Verfügung.

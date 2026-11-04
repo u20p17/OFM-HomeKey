@@ -131,7 +131,7 @@ The online status field records the last query and is refreshed on demand.
 
 #### Link a Home Key permission to a KNX action
 
-`Logische NFC-Aktions-ID` is the NFC credential/tag slot (0..1499), not the
+`NFC-Tag-ID` (formerly `Logische NFC-Aktions-ID`) is the NFC credential/tag slot (0..1499), not the
 number of an action channel. For example, assign the phone slot **100** in its
 Home Key permission row. In **Zuweisung von NFC-Tags zu Aktionen**, add
 **Tag 100 → Aktion 1**. Configure **Aktion 1** with the required switching
@@ -147,11 +147,18 @@ Home Key permission. Different slots may select the same action, for example
 reader.
 
 The NFC table's **Info holen** button reads the conventional UID tag stored in
-the selected slot through the ETS online connection and fills the information
-field with the action description and tag name. It does not scan a tag, assign
-permissions or trigger the action. Home Key slots deliberately contain no UID
-tag, so this query reports no tag for them; the Home Key permission's
-**Bezeichnung** is managed separately.
+the selected slot. For active Home Key rows it instead shows the description
+from the current ETS project, checks the reader's provisioned endpoint list and
+reports duplicate Home Key IDs or an occupied conventional UID slot. The field
+shows up to 80 characters; the progress dialog carries the full text. Project
+names and assignments are not proof that parameters have been downloaded, and
+local USB mappings are not listed. The button does not scan, enroll, authorize
+or trigger an action. Read failures replace stale information and disconnect.
+
+ETS validates unique IDs and identities across active Home Key permissions and
+names the conflicting rows before download. The firmware independently rejects
+the entire table on duplicates. Repeating a tag ID in the NFC action table is
+allowed: it intentionally selects multiple action channels.
 
 The ETS Group Monitor remains an alternative. Assign addresses to these objects:
 

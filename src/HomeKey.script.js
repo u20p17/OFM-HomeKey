@@ -156,7 +156,7 @@ function HK_importEndpoints(device, online, progress, context) {
             }
             throw error;
         }
-        var text = plan.length + " Geräte-IDs importiert (deaktiviert). NFC-Aktions-IDs vergeben, Zeilen aktivieren und herunterladen.";
+        var text = plan.length + " Geräte-IDs importiert (deaktiviert). NFC-Tag-IDs vergeben, Zeilen aktivieren und herunterladen.";
         HK_setOnlineStatus(device, text); progress.setText(text);
     });
 }
@@ -227,3 +227,69 @@ function HK_deleteAuthorization13(device, online, progress, context) { HK_delete
 function HK_deleteAuthorization14(device, online, progress, context) { HK_deleteAuthorization(14, device, online, progress, context); }
 function HK_deleteAuthorization15(device, online, progress, context) { HK_deleteAuthorization(15, device, online, progress, context); }
 function HK_deleteAuthorization16(device, online, progress, context) { HK_deleteAuthorization(16, device, online, progress, context); }
+
+
+// ETS validates edits before download; the firmware independently rejects the
+// entire table on duplicate IDs or identities. Disabled draft rows are ignored.
+function HK_validateAssignments(input, changed, prevValue, context) {
+    if (Number(input.HomeKeyEnabled) != 1 || Number(input.EtsAuthorization) != 1) return true;
+    var ids = {}, identities = {};
+    for (var row = 1; row <= 16; row++) {
+        var prefix = "Row" + (row < 10 ? "0" : "") + row;
+        if (Number(input[prefix + "Enabled"]) != 1) continue;
+        var id = Number(input[prefix + "AccessId"]);
+        if (id < 0 || id > 1499 || id % 1 != 0)
+            return "Home Key: Berechtigung " + row + " benötigt eine NFC-Tag-ID von 0 bis 1499.";
+        if (ids[id]) return "Home Key: NFC-Tag-ID " + id + " ist in Berechtigung " + ids[id] + " und " + row + " doppelt. Eigene IDs vergeben; doppelte IDs sperren die gesamte Home-Key-Tabelle.";
+        ids[id] = row;
+        var issuer = String(input[prefix + "Issuer"]).toLowerCase();
+        var endpoint = String(input[prefix + "Endpoint"]).toLowerCase();
+        // Empty identities must remain editable when a new row is enabled.
+        if (/^[0-9a-f]{16}$/.test(issuer) && /^[0-9a-f]{12}$/.test(endpoint)) {
+            var key = issuer + ":" + endpoint;
+            if (identities[key]) return "Home Key: Dasselbe Gerät steht in Berechtigung " + identities[key] + " und " + row + ". Nur eine Zeile aktivieren.";
+            identities[key] = row;
+        }
+    }
+    return true;
+}
+
+// Optional extension used by AccessControl's Info holen. The connection belongs
+// to the caller. Names/assignments are from the current ETS project, not proof
+// that this project's parameters have already been downloaded to the reader.
+function HK_nfcAssignmentInfo(device, online, progress, id, uidFound) {
+    var rows = [], validation = {};
+    var enabled = device.getParameterByName("HK_Enabled");
+    var ets = device.getParameterByName("HK_EtsAuthorization");
+    if (!enabled || !ets) return null;
+    validation.HomeKeyEnabled = enabled.value;
+    validation.EtsAuthorization = ets.value;
+    for (var row = 1; row <= 16; row++) {
+        var fields = HK_authorizationFields(device, row);
+        var prefix = "Row" + (row < 10 ? "0" : "") + row;
+        validation[prefix + "Enabled"] = fields.enabled.value;
+        validation[prefix + "Issuer"] = fields.issuer.value;
+        validation[prefix + "Endpoint"] = fields.endpoint.value;
+        validation[prefix + "AccessId"] = fields.action.value;
+        if (Number(fields.enabled.value) == 1 && Number(fields.action.value) == Number(id))
+            rows.push({row: row, fields: fields});
+    }
+    if (!rows.length) return null;
+    var names = [];
+    for (var i = 0; i < rows.length; i++)
+        names.push(String(rows[i].fields.description.value) || "Berechtigung " + rows[i].row);
+    var label = "ETS: Home Key " + names.join(", ");
+    if (Number(enabled.value) != 1) return "Home Key deaktiviert; " + label;
+    if (Number(ets.value) != 1) return "USB-Berechtigungen aktiv; ETS-Zuordnung nicht aktiv: " + label;
+    if (uidFound) return "KONFLIKT: UID-Tag und Home Key nutzen ID " + id + "; " + label;
+    var valid = HK_validateAssignments(validation);
+    if (valid !== true) return valid + " " + label;
+    var target = rows[0].fields;
+    var issuer = String(target.issuer.value).toLowerCase(), endpoint = String(target.endpoint.value).toLowerCase();
+    if (!/^[0-9a-f]{16}$/.test(issuer) || !/^[0-9a-f]{12}$/.test(endpoint))
+        return "Ungültige Geräte-ID; " + label;
+    var entries = HK_readEndpoints(device, online, progress), found = false;
+    for (var i = 0; i < entries.length; i++)
+        if (entries[i].issuer == issuer && entries[i].endpoint == endpoint) found = true;
+    return (found ? "Provisioniert; " : "Nicht provisioniert; ") + label + "; Zuordnung nach ETS-Download wirksam";
+}

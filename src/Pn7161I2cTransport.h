@@ -1,10 +1,15 @@
 #pragma once
 
 #include <Wire.h>
+#include <esp_idf_version.h>
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
+#include <driver/i2c_master.h>
+#endif
 #include "transport.hpp"
 
 // PN7161 NCI I2C framing (UM11495, section 4.2). Wire owns the shared bus;
-// this transport owns only VEN/DWL and never calls Wire.end().
+// this transport owns VEN/DWL and a write-device handle, never the Wire bus.
+// The NCI worker must be stopped before deinit().
 class Pn7161I2cTransport final : public IPN7160Transport
 {
   public:
@@ -28,4 +33,7 @@ class Pn7161I2cTransport final : public IPN7160Transport
     uint8_t address;
     uint32_t clock;
     bool ready = false;
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
+    i2c_master_dev_handle_t writeDevice = nullptr;
+#endif
 };

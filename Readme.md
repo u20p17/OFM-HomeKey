@@ -279,13 +279,18 @@ exclude the legacy PN7160 owner and share the same NCI/ECP/authentication code.
 The I2C transport reads NCI headers and payloads separately, rejects incomplete
 transfers, bounds IRQ waits and retries a NACKed NCI frame up to three total
 attempts with 5 ms between attempts. Per [UM11495 §4.2.3](https://www.nxp.com/docs/en/user-manual/UM11495.pdf),
-any NACK requires resending the whole frame. Writes use Arduino's locked I2C
-HAL to preserve the ESP-IDF error that `Wire.endTransmission()` otherwise
-collapses to a generic failure: IDF 5.4/5.5 uses `ESP_ERR_INVALID_STATE` for a
-NACK, and IDF 6 uses `ESP_ERR_INVALID_RESPONSE`. Timeouts and other errors are
-returned without replay; an uninitialized bus is rejected before writing.
-A low-level NACK log can occur during standby wake-up even when the retry
-succeeds. The shared Wire bus stays alive when the reader stops.
+any NACK requires resending the whole frame. On IDF 5.4+ writes use a
+synchronous ESP-IDF device handle attached to the existing Wire bus. The IDF
+bus semaphore serializes writes with Wire reads; ACK checking stays enabled.
+This avoids Arduino's `i2cWrite()` reporting every recoverable standby NACK as
+an error before the transport can retry. Recovered NACKs are debug messages;
+an exhausted retry budget or another transfer failure is still an error.
+IDF 5.4/5.5 uses `ESP_ERR_INVALID_STATE` for a NACK, while IDF 6 uses
+`ESP_ERR_INVALID_RESPONSE`. Timeouts and other errors are returned without
+replay; an uninitialized bus is rejected before writing. The ten-second reader
+health check can wake a sleeping PN7161 and trigger this normal flow control.
+The device handle is released after the NCI worker stops; the shared Wire bus
+stays alive. Older IDF versions retain the locked Arduino HAL path.
 `HOMEKEY_PN7161_VANT_MV` selects the PMU/TXLDO preset in each environment's
 build configuration: REG1 and XIAO default to `3300` (VDD=VANT=3.3 V).
 An explicit `5000` override requires VDD=3.3 V and VANT=5 V wiring.

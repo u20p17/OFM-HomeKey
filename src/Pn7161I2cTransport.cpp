@@ -3,8 +3,11 @@
 #include <Arduino.h>
 #include <esp32-hal-i2c.h>
 #include <esp_idf_version.h>
+#include <esp_log.h>
 #include <freertos/task.h>
 #include <cstring>
+
+static constexpr const char* TAG = "Pn7161I2c";
 
 esp_err_t Pn7161I2cTransport::init()
 {
@@ -22,6 +25,18 @@ esp_err_t Pn7161I2cTransport::init()
     if (wire.setBufferSize(258) < 258) return ESP_ERR_NO_MEM;
     if (!wire.begin(sda, scl, clock)) return ESP_FAIL;
     wire.setTimeOut(20);
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
+    // Reuse Arduino's initialized bus. Its driver semaphore serializes these
+    // synchronous writes with Wire reads. ACK checking remains enabled.
+    auto bus = static_cast<i2c_master_bus_handle_t>(i2cBusHandle(wire.getBusNum()));
+    if (!bus) return ESP_ERR_INVALID_STATE;
+    i2c_device_config_t config{};
+    config.dev_addr_length = I2C_ADDR_BIT_LEN_7;
+    config.device_address = address;
+    config.scl_speed_hz = clock;
+    const esp_err_t status = i2c_master_bus_add_device(bus, &config, &writeDevice);
+    if (status != ESP_OK) return status;
+#endif
     ready = true;
     return ESP_OK;
 }
@@ -30,6 +45,14 @@ void Pn7161I2cTransport::deinit()
 {
     if (ready) digitalWrite(ven, LOW);
     ready = false;
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
+    if (writeDevice)
+    {
+        const esp_err_t status = i2c_master_bus_rm_device(writeDevice);
+        if (status != ESP_OK) ESP_LOGE(TAG, "Cannot release I2C write device: 0x%X", status);
+        writeDevice = nullptr;
+    }
+#endif
 }
 
 esp_err_t Pn7161I2cTransport::read(uint8_t* buffer, size_t length)
@@ -53,16 +76,26 @@ esp_err_t Pn7161I2cTransport::write(const uint8_t* buffer, size_t length)
 {
     if (!ready) return ESP_ERR_INVALID_STATE;
     if (!buffer || length == 0 || length > 258) return ESP_ERR_INVALID_ARG;
-    // Wire collapses ESP-IDF 5.4/5.5 NACKs into status 4. Use its locked HAL
-    // to retain the error; TwoWire still owns bus initialization and reads.
+    // Arduino's i2cWrite logs every NACK as an error before we can retry it.
+    // Use the synchronous IDF API on the same bus so only final failures are
+    // reported. A recovered standby NACK is normal NCI flow control.
     if (!i2cIsInit(wire.getBusNum())) return ESP_ERR_INVALID_STATE;
     esp_err_t status = ESP_FAIL;
     for (unsigned attempt = 0; attempt < 3; ++attempt)
     {
         // Let the NCI receiver drain pending notifications before writing.
         if (wait_for_irq(false, pdMS_TO_TICKS(20)) != ESP_OK) return ESP_ERR_TIMEOUT;
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
+        if (!writeDevice) return ESP_ERR_INVALID_STATE;
+        status = i2c_master_transmit(writeDevice, buffer, length, wire.getTimeOut());
+#else
         status = i2cWrite(wire.getBusNum(), address, buffer, length, wire.getTimeOut());
-        if (status == ESP_OK) return ESP_OK;
+#endif
+        if (status == ESP_OK)
+        {
+            if (attempt) ESP_LOGD(TAG, "NCI write recovered after %u NACK(s)", attempt);
+            return ESP_OK;
+        }
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
         const bool nack = status == ESP_ERR_INVALID_RESPONSE;
 #elif ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 4, 0)
@@ -72,7 +105,11 @@ esp_err_t Pn7161I2cTransport::write(const uint8_t* buffer, size_t length)
 #endif
         // UM11495 section 4.2.3 requires resending the complete frame after
         // any byte is NACKed (including standby wake-up). Never retry a timeout.
-        if (!nack || attempt == 2) return status;
+        if (!nack || attempt == 2)
+        {
+            ESP_LOGE(TAG, "NCI I2C write failed after %u attempt(s): 0x%X", attempt + 1, status);
+            return status;
+        }
         vTaskDelay(pdMS_TO_TICKS(5));
     }
     return status;

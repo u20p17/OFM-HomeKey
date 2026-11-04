@@ -76,8 +76,6 @@ void HomeKeyModule::authenticate(const std::vector<uint8_t>& response)
                     event.reason = "authenticated credential could not be saved";
                 else if (!store.contains(event.issuer, event.endpoint))
                     event.reason = "authenticated endpoint missing from credential store";
-                else if (lookupAccessId(event.issuer, event.endpoint) == HomeKey::InvalidId)
-                    event.reason = "authenticated endpoint has no action-ID mapping";
                 else
                     event.kind = EventKind::Authenticated;
             }
@@ -86,7 +84,11 @@ void HomeKeyModule::authenticate(const std::vector<uint8_t>& response)
             event.reason = exchangeFailed ? "Home Key APDU exchange failed"
                 : state == ddk::FlowState::Failed ? "Home Key authentication failed"
                 : "Home Key authentication interrupted or step limit reached";
-        profile->control_flow(session, event.kind == EventKind::Authenticated ? 1 : 0, 0);
+        // Authentication and ETS authorization are separate. Keep the identity
+        // in the event so the main loop can diagnose the missing permission.
+        const bool authorized = event.kind == EventKind::Authenticated &&
+            lookupAccessId(event.issuer, event.endpoint) != HomeKey::InvalidId;
+        profile->control_flow(session, authorized ? 1 : 0, 0);
     }
     event.generation = store.generation;
     enqueue(event);

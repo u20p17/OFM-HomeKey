@@ -11,6 +11,17 @@
 #include <esp_heap_caps.h>
 #include <sodium.h>
 
+namespace
+{
+    template<typename Bytes> std::string hex(const Bytes& bytes)
+    {
+        static const char digits[] = "0123456789abcdef";
+        std::string result;
+        for (auto byte : bytes) { result += digits[byte >> 4]; result += digits[byte & 15]; }
+        return result;
+    }
+}
+
 HomeKeyModule openknxHomeKey;
 
 void HomeKeyModule::setup()
@@ -44,6 +55,8 @@ void HomeKeyModule::loop()
         policyLoaded = true;
         endpointDirty = true;
         reportedAuthorization = reportedCommissioning = reportedResult = -1;
+        logInfoP("Authorization source: %s; table %s; %u active mapping(s)",
+            etsAuthorization ? "ETS" : "USB", etsTableValid ? "valid" : "INVALID", unsigned(activeMappings().size()));
     }
     enabled = ParamHK_Enabled && !fatal;
     allowUid = ParamHK_AllowUid;
@@ -119,8 +132,19 @@ void HomeKeyModule::loop()
             {
                 auto id = lookupAccessId(event.issuer, event.endpoint);
                 granted = id != HomeKey::InvalidId && openknxAccessControl.processHomeKeyCredential(id);
-                reason = id == HomeKey::InvalidId ? "authenticated endpoint has no action-ID mapping"
-                    : "access control blocked (lock, delay, or action-ID unavailable)";
+                if (id == HomeKey::InvalidId)
+                {
+                    reason = !policyLoaded ? "authorization policy not loaded"
+                        : etsAuthorization && !etsTableValid ? "ETS permission table invalid (duplicate ID/device or malformed row)"
+                        : activeMappings().empty() ? "no active NFC-Tag-ID permissions; enable the imported device and download parameters"
+                        : "scanned device has no active NFC-Tag-ID permission; compare this endpoint with the enabled ETS row";
+                    logInfoP("Authenticated issuer=%s endpoint=%s; NFC-Tag-ID unmapped", hex(event.issuer).c_str(), hex(event.endpoint).c_str());
+                }
+                else
+                {
+                    reason = "access control blocked (lock, delay, or NFC-Tag-ID occupied)";
+                    if (granted) logInfoP("Home Key credential accepted: NFC-Tag-ID=%u", id);
+                }
             }
             else if (event.kind == EventKind::Uid && allowUid)
             {
@@ -382,13 +406,7 @@ namespace
         }
         return true;
     }
-    template<typename Bytes> std::string hex(const Bytes& bytes)
-    {
-        static const char digits[] = "0123456789abcdef";
-        std::string result;
-        for (auto byte : bytes) { result += digits[byte >> 4]; result += digits[byte & 15]; }
-        return result;
-    }
+
 }
 
 bool HomeKeyModule::processCommand(const std::string cmd, bool diagnoseKo)

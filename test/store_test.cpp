@@ -53,6 +53,9 @@ int main()
     assert(authorizedId(true, true, local, table, etsEntry.issuer, etsEntry.endpoint) == 1499);
     assert(authorizedId(true, false, local, table, etsEntry.issuer, etsEntry.endpoint) == InvalidId);
     auto goodRows = rows;
+    rows[31] = rows[32] = 0;
+    assert(parseEtsRows(rows.data(), rows.size(), table) && table[0].accessId == 0); // Slot zero is valid, independent of action routing.
+    rows = goodRows;
     setRow(1, "001122334455AABB", "012345abcdef", 1); // Same endpoint, different action.
     assert(!parseEtsRows(rows.data(), rows.size(), table) && table.empty());
     rows = goodRows; setRow(1, "001122334455AABB", "012345abcdee", 1499); // Same action, different endpoint.

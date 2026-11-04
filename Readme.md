@@ -281,7 +281,7 @@ transfers, bounds IRQ waits and retries a NACKed NCI frame up to three total
 attempts with 5 ms between attempts. Per [UM11495 §4.2.3](https://www.nxp.com/docs/en/user-manual/UM11495.pdf),
 any NACK requires resending the whole frame. On IDF 5.4+ writes use a
 synchronous ESP-IDF device handle attached to the existing Wire bus. The IDF
-bus semaphore serializes writes with Wire reads; ACK checking stays enabled.
+bus semaphore serializes reads and writes; ACK checking stays enabled.
 This avoids Arduino's `i2cWrite()` reporting every recoverable standby NACK as
 an error before the transport can retry. Recovered NACKs are debug messages;
 an exhausted retry budget or another transfer failure is still an error.
@@ -427,3 +427,12 @@ at 15-byte APDU size. ETS on Windows and physical KNX/Apple provisioning still
 require hardware validation.
 
 The shared Home Key status bar stays visible above both tabs and shows Home Key activation, NFC commissioning permission and the pairing window. Failed status polling marks every value unknown until a successful refresh; the former `#status` tab link opens Setup-Code.
+
+Read-side address NACKs now use the same synchronous IDF device handle, with
+up to three attempts while IRQ is high. A receive NACK occurs before data is
+clocked, so the same header/payload read is safe to retry. Other errors/timeouts
+are never replayed; failed buffers are zeroed. If IRQ drops, no packet is pending
+and the NCI loop resumes polling without a misleading header failure.
+Authentication logs now identify the scanned public issuer/endpoint when an
+active permission is missing, distinguish invalid/empty ETS tables and use the
+NFC-Tag-ID terminology. ID 0 is valid independently of action configuration.

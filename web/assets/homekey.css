@@ -8,7 +8,10 @@ body:has(#homekey-page) nav { width: 190px; min-width: 190px; }
 .homekey p { line-height: 1.55; }
 .homekey .homekey-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
 .homekey .homekey-title p { color: #687365; font-size: 12px; }
-.homekey .homekey-toolbar { display: flex; align-items: center; gap: 9px; padding: 10px 12px; margin-bottom: 14px; background: #f5f7f4; border-left: 3px solid #449841; color: #374333; font-size: 13px; }
+.homekey .homekey-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px; padding: 9px 12px; margin-bottom: 14px; background: #f5f7f4; border-left: 3px solid #449841; color: #374333; font-size: 13px; }
+.homekey .homekey-connection-summary { display: flex; align-items: center; gap: 9px; flex: 1 1 260px; min-width: 0; }
+.homekey .homekey-status-items { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+.homekey .homekey-status-item { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 12px; }
 .homekey .homekey-dot { width: 8px; height: 8px; flex-shrink: 0; border-radius: 50%; background: #9ba49a; }
 .homekey .homekey-dot[data-state="ready"] { background: #449841; }
 .homekey .homekey-dot[data-state="offline"] { background: #b00020; }
@@ -28,7 +31,7 @@ body:has(#homekey-page) nav { width: 190px; min-width: 190px; }
 .homekey .homekey-note { margin: 10px 0; color: #495444; font-size: 13px; }
 .homekey .homekey-hint { margin: 10px 0 0; color: #687365; font-size: 12px; }
 .homekey .homekey-badge { display: inline-block; padding: 3px 8px; border-radius: 20px; background: #e3efdf; color: #315a2a; font-size: 11px; line-height: 1.4; white-space: nowrap; }
-.homekey .homekey-badge[data-state="off"] { background: #eff1ee; color: #626b60; }
+.homekey .homekey-badge[data-state="off"], .homekey .homekey-badge[data-state="unknown"] { background: #eff1ee; color: #626b60; }
 .homekey .homekey-notice { margin: 12px 0 16px; padding: 9px 10px; border: 1px solid #e2dfc9; border-radius: 6px; background: #faf9f1; color: #655c33; font-size: 12px; }
 .homekey .homekey-notice[data-state="ready"] { background: #f2f7ef; border-color: #d5e4cd; color: #315a2a; }
 .homekey form { display: grid; gap: 13px; }
@@ -50,9 +53,6 @@ body:has(#homekey-page) nav { width: 190px; min-width: 190px; }
 .homekey #homekey-qr { max-width: 18rem; margin: 16px auto; background: #fff; }
 .homekey #homekey-qr svg { display: block; width: 100%; height: auto; }
 .homekey .homekey-qr-card > button { display: block; margin: 0 auto; }
-.homekey .attribute-table { margin: 4px 0 12px; font-size: 13px; }
-.homekey .attribute-table td { padding: 11px 0; }
-.homekey .attribute-table td:first-child { width: 55%; color: #687365; white-space: normal; }
 @media (max-width: 1000px) { .homekey .homekey-grid { grid-template-columns: 1fr; } }
 @media (max-width: 640px) {
     body:has(#homekey-page) { flex-direction: column; }

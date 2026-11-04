@@ -322,10 +322,10 @@ authentication to check margins. Idle headroom alone does not cover all crypto
 paths; the REG1 sizes retain about 5 KiB beyond the observed startup usage.
 
 The Home Key page follows OAM-NeoPixel Studio's compact tabs, green actions,
-rounded controls and bordered cards. `Setup-Code`, `Apple Home` and `Status`
+rounded controls and bordered cards. `Setup-Code` and `Apple Home`
 separate code configuration, local QR generation and live commissioning status.
 Arrow keys plus Home/End navigate the tabs. The selected tab is stored in the
-URL fragment (`#setup-code`, `#apple-home`, `#status`) and restored after reload;
+URL fragment (`#setup-code`, `#apple-home`) and restored after reload;
 no setup code is stored in the URL or browser storage. Leaving the Apple Home
 tab clears the QR code and its input. Status polls that find commissioning
 blocked, pairing closed or the device offline hide the QR code but retain the
@@ -425,3 +425,5 @@ JavaScript tests mock the ETS device/online APIs, cover preservation, cancellati
 capacity, rollback and changing snapshots, and exercise the real Common wrapper
 at 15-byte APDU size. ETS on Windows and physical KNX/Apple provisioning still
 require hardware validation.
+
+The shared Home Key status bar stays visible above both tabs and shows Home Key activation, NFC commissioning permission and the pairing window. Failed status polling marks every value unknown until a successful refresh; the former `#status` tab link opens Setup-Code.

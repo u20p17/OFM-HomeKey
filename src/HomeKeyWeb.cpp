@@ -40,12 +40,18 @@ void HomeKeyModule::setupWeb()
         html += R"HTML(">
 <div class="container homekey" id="homekey-page">
   <div class="homekey-title"><h1>Home Key</h1><p>Apple Home einrichten &amp; Zutritt verwalten</p></div>
-  <div class="homekey-toolbar" role="status" aria-live="polite"><span class="homekey-dot" id="homekey-connection" data-state="waiting" aria-hidden="true"></span><span id="homekey-summary">Ger&auml;testatus wird abgefragt&hellip;</span></div>
+  <div class="homekey-toolbar" id="homekey-statusbar" role="status" aria-live="polite" aria-atomic="true">
+    <div class="homekey-connection-summary"><span class="homekey-dot" id="homekey-connection" data-state="waiting" aria-hidden="true"></span><span id="homekey-summary">Ger&auml;testatus wird abgefragt&hellip;</span></div>
+    <div class="homekey-status-items">
+      <span class="homekey-status-item">Home Key <span class="homekey-badge" id="homekey-enabled" data-state="unknown">Wird abgefragt</span></span>
+      <span class="homekey-status-item">NFC-Inbetriebnahme <span class="homekey-badge" id="homekey-commissioning" data-state="unknown">Wird abgefragt</span></span>
+      <span class="homekey-status-item">Pairing-Fenster <span class="homekey-badge" id="homekey-pairing" data-state="unknown">Wird abgefragt</span></span>
+    </div>
+  </div>
   <noscript><p class="homekey-notice">Bitte JavaScript aktivieren, um Home Key einzurichten.</p></noscript>
   <div class="homekey-tabs" role="tablist" aria-label="Home Key Bereiche">
     <button type="button" id="homekey-tab-setup" role="tab" aria-selected="true" aria-controls="homekey-panel-setup">Setup-Code</button>
     <button type="button" id="homekey-tab-pairing" role="tab" aria-selected="false" aria-controls="homekey-panel-pairing" tabindex="-1">Apple Home</button>
-    <button type="button" id="homekey-tab-status" role="tab" aria-selected="false" aria-controls="homekey-panel-status" tabindex="-1">Status</button>
   </div>
   <section id="homekey-panel-setup" role="tabpanel" aria-labelledby="homekey-tab-setup" tabindex="0">
     <div class="homekey-grid">
@@ -96,20 +102,7 @@ void HomeKeyModule::setupWeb()
       </div>
     </div>
   </section>
-  <section id="homekey-panel-status" role="tabpanel" aria-labelledby="homekey-tab-status" tabindex="0" hidden>
-    <div class="homekey-grid">
-      <div class="homekey-card">
-        <div class="homekey-card-heading"><h2>Ger&auml;testatus</h2><span class="homekey-badge">Live</span></div>
-        <table class="attribute-table"><tbody>
-          <tr><td>Apple Home Key</td><td><span class="homekey-badge" id="homekey-enabled">Wird abgefragt</span></td></tr>
-          <tr><td>NFC-Inbetriebnahme</td><td><span class="homekey-badge" id="homekey-commissioning">Wird abgefragt</span></td></tr>
-          <tr><td>Pairing-Fenster</td><td><span class="homekey-badge" id="homekey-pairing">Wird abgefragt</span></td></tr>
-        </tbody></table>
-        <p class="homekey-hint">Der Status wird automatisch aktualisiert. Das Pairing-Fenster l&auml;sst sich in der ETS oder an der lokalen USB-Konsole &ouml;ffnen.</p>
-      </div>
-      <aside class="homekey-card"><div class="homekey-card-heading"><h2>Zutritt erlauben</h2></div><p class="homekey-note">Die Kopplung in Apple Home allein gew&auml;hrt keinen Zutritt. Provisionierte Endpoints m&uuml;ssen einer freigegebenen NFC-Aktions-ID zugeordnet werden.</p><p class="homekey-hint">Berechtigungen werden unter Zutrittskontrolle in der ETS eingerichtet.</p></aside>
-    </div>
-  </section>
+  <details class="homekey-help"><summary>Status und Zutrittsberechtigungen</summary><p>Der Status in der Leiste wird automatisch aktualisiert. Das Pairing-Fenster l&auml;sst sich in der ETS oder an der lokalen USB-Konsole &ouml;ffnen. Die Kopplung in Apple Home allein gew&auml;hrt keinen Zutritt: Provisionierte Ger&auml;te in der ETS importieren, Berechtigung aktivieren und eine freie NFC-Tag-ID vergeben. Diese unter Zutrittskontrolle als Tag der gew&uuml;nschten Aktion zuordnen, deren Schaltobjekt mit dem KNX-Aktor verbinden und die Parameter laden.</p></details>
 </div>
 )HTML";
         html += "<script src=\"/assets/qrcode.js?v=";

@@ -24,10 +24,11 @@
         result.dataset.error = String(error);
     }
 
-    const tabs = ['setup', 'pairing', 'status'];
-    const tabHashes = { setup: '#setup-code', pairing: '#apple-home', status: '#status' };
+    const tabs = ['setup', 'pairing'];
+    const tabHashes = { setup: '#setup-code', pairing: '#apple-home' };
     function tabFromHash() {
         const hash = window.location ? window.location.hash : '';
+        if (hash === '#status' && window.history) window.history.replaceState(null, '', tabHashes.setup);
         return tabs.find(tab => tabHashes[tab] === hash) || 'setup';
     }
     function selectTab(name, updateHash = true) {
@@ -173,6 +174,11 @@
             save.disabled = true;
             permission.textContent = 'Keine Verbindung zum Gerät.';
             permission.dataset.state = 'waiting';
+            for (const id of ['homekey-enabled', 'homekey-commissioning', 'homekey-pairing']) {
+                const badge = document.getElementById(id);
+                badge.textContent = 'Unbekannt';
+                badge.dataset.state = 'unknown';
+            }
             document.getElementById('homekey-connection').dataset.state = 'offline';
             document.getElementById('homekey-summary').textContent = 'Keine Verbindung zum Gerät. Verbindung wird erneut versucht.';
             message(error.message, true);

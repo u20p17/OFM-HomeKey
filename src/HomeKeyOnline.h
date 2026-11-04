@@ -6,7 +6,7 @@
 namespace HomeKeyOnline
 {
     constexpr uint8_t Object = 165, Property = 3, Version = 1;
-    enum Result : uint8_t { Ok, Busy, Invalid, Unconfigured, Disabled, NotPermitted, QueueBusy, Unavailable, Stale, NotFound };
+    enum Result : uint8_t { Ok, Busy, Invalid, Unconfigured, Disabled, NotPermitted, QueueBusy, Unavailable, Stale, NotFound, ProgrammingRequired };
     struct Request { uint8_t command = 0, index = 0; uint32_t generation = 0; };
     inline uint32_t get32(const uint8_t* bytes)
     {
@@ -18,8 +18,8 @@ namespace HomeKeyOnline
     }
     inline bool decode(const uint8_t* data, size_t length, Request& request)
     {
-        if (!data || !length || data[0] > 3) return false;
-        if (data[0] == 3)
+        if (!data || !length || data[0] > 4) return false;
+        if (data[0] == 3 || data[0] == 4)
         {
             if (length != 6 || data[1] >= 64) return false;
             request.index = data[1]; request.generation = get32(data + 2);

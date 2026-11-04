@@ -15,6 +15,7 @@ class HomeKeyCredentialStore : public ddk::CredentialStore
     ddk::span<ddk::Issuer> issuers() override { return {entries.data(), entries.size()}; }
     void save() override;
     bool eraseReaderKey();
+    bool removeEndpoint(const HomeKey::IssuerId&, const HomeKey::EndpointId&);
     bool clear();
     bool contains(const HomeKey::IssuerId&, const HomeKey::EndpointId&) const;
     std::recursive_mutex mutex;

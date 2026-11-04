@@ -14,6 +14,7 @@
           <ParameterType Id="%AID%_PT-HomeKeyEndpoint" Name="HomeKeyEndpoint"><TypeText SizeInBit="104" /></ParameterType>
           <ParameterType Id="%AID%_PT-HomeKeyAccessId" Name="HomeKeyAccessId"><TypeNumber SizeInBit="16" Type="unsignedInt" minInclusive="0" maxInclusive="1499" /></ParameterType>
           <ParameterType Id="%AID%_PT-HomeKeyOnlineStatus" Name="HomeKeyOnlineStatus"><TypeText SizeInBit="1600" /></ParameterType>
+          <ParameterType Id="%AID%_PT-HomeKeyDescription" Name="HomeKeyDescription"><TypeText SizeInBit="256" /></ParameterType>
         </ParameterTypes>
         <Parameters>
           <Union SizeInBit="8">
@@ -88,6 +89,22 @@
           <Parameter Id="%AID%_P-%TT%00162" Name="Authorization16Endpoint" ParameterType="%AID%_PT-HomeKeyEndpoint" Text="Endpoint-ID (12 Hex-Zeichen)" Value=""><Memory CodeSegment="%MID%" Offset="514" BitOffset="0" /></Parameter>
           <Parameter Id="%AID%_P-%TT%00163" Name="Authorization16AccessId" ParameterType="%AID%_PT-HomeKeyAccessId" Text="Logische NFC-Aktions-ID" Value="0"><Memory CodeSegment="%MID%" Offset="527" BitOffset="0" /></Parameter>
           <Parameter Id="%AID%_P-%TT%00005" Name="OnlineStatus" ParameterType="%AID%_PT-HomeKeyOnlineStatus" Text="Letzte Online-Abfrage" Value="Noch nicht abgefragt"><Memory CodeSegment="%MID%" Offset="529" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00500" Name="Authorization01Description" ParameterType="%AID%_PT-HomeKeyDescription" Text="Bezeichnung" Value=""><Memory CodeSegment="%MID%" Offset="729" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00501" Name="Authorization02Description" ParameterType="%AID%_PT-HomeKeyDescription" Text="Bezeichnung" Value=""><Memory CodeSegment="%MID%" Offset="761" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00502" Name="Authorization03Description" ParameterType="%AID%_PT-HomeKeyDescription" Text="Bezeichnung" Value=""><Memory CodeSegment="%MID%" Offset="793" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00503" Name="Authorization04Description" ParameterType="%AID%_PT-HomeKeyDescription" Text="Bezeichnung" Value=""><Memory CodeSegment="%MID%" Offset="825" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00504" Name="Authorization05Description" ParameterType="%AID%_PT-HomeKeyDescription" Text="Bezeichnung" Value=""><Memory CodeSegment="%MID%" Offset="857" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00505" Name="Authorization06Description" ParameterType="%AID%_PT-HomeKeyDescription" Text="Bezeichnung" Value=""><Memory CodeSegment="%MID%" Offset="889" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00506" Name="Authorization07Description" ParameterType="%AID%_PT-HomeKeyDescription" Text="Bezeichnung" Value=""><Memory CodeSegment="%MID%" Offset="921" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00507" Name="Authorization08Description" ParameterType="%AID%_PT-HomeKeyDescription" Text="Bezeichnung" Value=""><Memory CodeSegment="%MID%" Offset="953" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00508" Name="Authorization09Description" ParameterType="%AID%_PT-HomeKeyDescription" Text="Bezeichnung" Value=""><Memory CodeSegment="%MID%" Offset="985" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00509" Name="Authorization10Description" ParameterType="%AID%_PT-HomeKeyDescription" Text="Bezeichnung" Value=""><Memory CodeSegment="%MID%" Offset="1017" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00510" Name="Authorization11Description" ParameterType="%AID%_PT-HomeKeyDescription" Text="Bezeichnung" Value=""><Memory CodeSegment="%MID%" Offset="1049" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00511" Name="Authorization12Description" ParameterType="%AID%_PT-HomeKeyDescription" Text="Bezeichnung" Value=""><Memory CodeSegment="%MID%" Offset="1081" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00512" Name="Authorization13Description" ParameterType="%AID%_PT-HomeKeyDescription" Text="Bezeichnung" Value=""><Memory CodeSegment="%MID%" Offset="1113" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00513" Name="Authorization14Description" ParameterType="%AID%_PT-HomeKeyDescription" Text="Bezeichnung" Value=""><Memory CodeSegment="%MID%" Offset="1145" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00514" Name="Authorization15Description" ParameterType="%AID%_PT-HomeKeyDescription" Text="Bezeichnung" Value=""><Memory CodeSegment="%MID%" Offset="1177" BitOffset="0" /></Parameter>
+          <Parameter Id="%AID%_P-%TT%00515" Name="Authorization16Description" ParameterType="%AID%_PT-HomeKeyDescription" Text="Bezeichnung" Value=""><Memory CodeSegment="%MID%" Offset="1209" BitOffset="0" /></Parameter>
         </Parameters>
         <ParameterRefs>
           <ParameterRef Id="%AID%_UP-%TT%00001_R-%TT%0000101" RefId="%AID%_UP-%TT%00001" />
@@ -159,6 +176,22 @@
           <ParameterRef Id="%AID%_P-%TT%00162_R-%TT%0016201" RefId="%AID%_P-%TT%00162" />
           <ParameterRef Id="%AID%_P-%TT%00163_R-%TT%0016301" RefId="%AID%_P-%TT%00163" />
           <ParameterRef Id="%AID%_P-%TT%00005_R-%TT%0000501" RefId="%AID%_P-%TT%00005" Access="Read" />
+          <ParameterRef Id="%AID%_P-%TT%00500_R-%TT%0050001" RefId="%AID%_P-%TT%00500" />
+          <ParameterRef Id="%AID%_P-%TT%00501_R-%TT%0050101" RefId="%AID%_P-%TT%00501" />
+          <ParameterRef Id="%AID%_P-%TT%00502_R-%TT%0050201" RefId="%AID%_P-%TT%00502" />
+          <ParameterRef Id="%AID%_P-%TT%00503_R-%TT%0050301" RefId="%AID%_P-%TT%00503" />
+          <ParameterRef Id="%AID%_P-%TT%00504_R-%TT%0050401" RefId="%AID%_P-%TT%00504" />
+          <ParameterRef Id="%AID%_P-%TT%00505_R-%TT%0050501" RefId="%AID%_P-%TT%00505" />
+          <ParameterRef Id="%AID%_P-%TT%00506_R-%TT%0050601" RefId="%AID%_P-%TT%00506" />
+          <ParameterRef Id="%AID%_P-%TT%00507_R-%TT%0050701" RefId="%AID%_P-%TT%00507" />
+          <ParameterRef Id="%AID%_P-%TT%00508_R-%TT%0050801" RefId="%AID%_P-%TT%00508" />
+          <ParameterRef Id="%AID%_P-%TT%00509_R-%TT%0050901" RefId="%AID%_P-%TT%00509" />
+          <ParameterRef Id="%AID%_P-%TT%00510_R-%TT%0051001" RefId="%AID%_P-%TT%00510" />
+          <ParameterRef Id="%AID%_P-%TT%00511_R-%TT%0051101" RefId="%AID%_P-%TT%00511" />
+          <ParameterRef Id="%AID%_P-%TT%00512_R-%TT%0051201" RefId="%AID%_P-%TT%00512" />
+          <ParameterRef Id="%AID%_P-%TT%00513_R-%TT%0051301" RefId="%AID%_P-%TT%00513" />
+          <ParameterRef Id="%AID%_P-%TT%00514_R-%TT%0051401" RefId="%AID%_P-%TT%00514" />
+          <ParameterRef Id="%AID%_P-%TT%00515_R-%TT%0051501" RefId="%AID%_P-%TT%00515" />
         </ParameterRefs>
         <ComObjectTable>
           <ComObject Id="%AID%_O-%TT%00001" Name="LockFeedback" Number="0" ObjectSize="1 Bit" Text="Physische Verriegelung" FunctionText="Home Key: 1=verriegelt" ReadFlag="Disabled" WriteFlag="Enabled" CommunicationFlag="Enabled" TransmitFlag="Disabled" UpdateFlag="Enabled" ReadOnInitFlag="Enabled" DatapointType="DPST-1-1" />
@@ -207,98 +240,131 @@
               <ComObjectRefRef RefId="%AID%_O-%TT%00009_R-%TT%0000901" />
               <ParameterRefRef RefId="%AID%_UP-%TT%00004_R-%TT%0000401" HelpContext="HK-ETS-Berechtigungen" />
               <choose ParamRefId="%AID%_UP-%TT%00004_R-%TT%0000401"><when test="1">
+              <ParameterSeparator Id="%AID%_PS-nnn" Text="Bezeichnungen dienen der Zuordnung in ETS. Gerät löschen widerruft den Endpoint im Reader und leert passende Berechtigungen in ETS; dazu den Programmiermodus einschalten." UIHint="Information" />
               <Button Id="%AID%_B-%TT%00004" Name="importEndpoints" Text="Provisionierte Geräte-IDs importieren" EventHandler="HK_importEndpoints" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Importieren" />
               <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 1">
+                <ParameterRefRef RefId="%AID%_P-%TT%00500_R-%TT%0050001" HelpContext="HK-Bezeichnung" />
+                <Button Id="%AID%_B-%TT%00020" Name="deleteAuthorization01" Text="Gerät löschen (Prog-Modus)" EventHandler="HK_deleteAuthorization01" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Geraet-Entfernen" />
                 <ParameterRefRef RefId="%AID%_P-%TT%00100_R-%TT%0010001" HelpContext="HK-Berechtigung-Aktiv" />
                 <choose ParamRefId="%AID%_P-%TT%00100_R-%TT%0010001"><when test="1">
                   <ParameterRefRef RefId="%AID%_P-%TT%00101_R-%TT%0010101" HelpContext="HK-Issuer-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00102_R-%TT%0010201" HelpContext="HK-Endpoint-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00103_R-%TT%0010301" HelpContext="HK-Aktions-ID" />
                 </when></choose>
               </ParameterBlock>
               <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 2">
+                <ParameterRefRef RefId="%AID%_P-%TT%00501_R-%TT%0050101" HelpContext="HK-Bezeichnung" />
+                <Button Id="%AID%_B-%TT%00021" Name="deleteAuthorization02" Text="Gerät löschen (Prog-Modus)" EventHandler="HK_deleteAuthorization02" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Geraet-Entfernen" />
                 <ParameterRefRef RefId="%AID%_P-%TT%00104_R-%TT%0010401" HelpContext="HK-Berechtigung-Aktiv" />
                 <choose ParamRefId="%AID%_P-%TT%00104_R-%TT%0010401"><when test="1">
                   <ParameterRefRef RefId="%AID%_P-%TT%00105_R-%TT%0010501" HelpContext="HK-Issuer-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00106_R-%TT%0010601" HelpContext="HK-Endpoint-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00107_R-%TT%0010701" HelpContext="HK-Aktions-ID" />
                 </when></choose>
               </ParameterBlock>
               <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 3">
+                <ParameterRefRef RefId="%AID%_P-%TT%00502_R-%TT%0050201" HelpContext="HK-Bezeichnung" />
+                <Button Id="%AID%_B-%TT%00022" Name="deleteAuthorization03" Text="Gerät löschen (Prog-Modus)" EventHandler="HK_deleteAuthorization03" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Geraet-Entfernen" />
                 <ParameterRefRef RefId="%AID%_P-%TT%00108_R-%TT%0010801" HelpContext="HK-Berechtigung-Aktiv" />
                 <choose ParamRefId="%AID%_P-%TT%00108_R-%TT%0010801"><when test="1">
                   <ParameterRefRef RefId="%AID%_P-%TT%00109_R-%TT%0010901" HelpContext="HK-Issuer-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00110_R-%TT%0011001" HelpContext="HK-Endpoint-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00111_R-%TT%0011101" HelpContext="HK-Aktions-ID" />
                 </when></choose>
               </ParameterBlock>
               <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 4">
+                <ParameterRefRef RefId="%AID%_P-%TT%00503_R-%TT%0050301" HelpContext="HK-Bezeichnung" />
+                <Button Id="%AID%_B-%TT%00023" Name="deleteAuthorization04" Text="Gerät löschen (Prog-Modus)" EventHandler="HK_deleteAuthorization04" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Geraet-Entfernen" />
                 <ParameterRefRef RefId="%AID%_P-%TT%00112_R-%TT%0011201" HelpContext="HK-Berechtigung-Aktiv" />
                 <choose ParamRefId="%AID%_P-%TT%00112_R-%TT%0011201"><when test="1">
                   <ParameterRefRef RefId="%AID%_P-%TT%00113_R-%TT%0011301" HelpContext="HK-Issuer-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00114_R-%TT%0011401" HelpContext="HK-Endpoint-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00115_R-%TT%0011501" HelpContext="HK-Aktions-ID" />
                 </when></choose>
               </ParameterBlock>
               <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 5">
+                <ParameterRefRef RefId="%AID%_P-%TT%00504_R-%TT%0050401" HelpContext="HK-Bezeichnung" />
+                <Button Id="%AID%_B-%TT%00024" Name="deleteAuthorization05" Text="Gerät löschen (Prog-Modus)" EventHandler="HK_deleteAuthorization05" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Geraet-Entfernen" />
                 <ParameterRefRef RefId="%AID%_P-%TT%00116_R-%TT%0011601" HelpContext="HK-Berechtigung-Aktiv" />
                 <choose ParamRefId="%AID%_P-%TT%00116_R-%TT%0011601"><when test="1">
                   <ParameterRefRef RefId="%AID%_P-%TT%00117_R-%TT%0011701" HelpContext="HK-Issuer-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00118_R-%TT%0011801" HelpContext="HK-Endpoint-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00119_R-%TT%0011901" HelpContext="HK-Aktions-ID" />
                 </when></choose>
               </ParameterBlock>
               <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 6">
+                <ParameterRefRef RefId="%AID%_P-%TT%00505_R-%TT%0050501" HelpContext="HK-Bezeichnung" />
+                <Button Id="%AID%_B-%TT%00025" Name="deleteAuthorization06" Text="Gerät löschen (Prog-Modus)" EventHandler="HK_deleteAuthorization06" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Geraet-Entfernen" />
                 <ParameterRefRef RefId="%AID%_P-%TT%00120_R-%TT%0012001" HelpContext="HK-Berechtigung-Aktiv" />
                 <choose ParamRefId="%AID%_P-%TT%00120_R-%TT%0012001"><when test="1">
                   <ParameterRefRef RefId="%AID%_P-%TT%00121_R-%TT%0012101" HelpContext="HK-Issuer-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00122_R-%TT%0012201" HelpContext="HK-Endpoint-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00123_R-%TT%0012301" HelpContext="HK-Aktions-ID" />
                 </when></choose>
               </ParameterBlock>
               <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 7">
+                <ParameterRefRef RefId="%AID%_P-%TT%00506_R-%TT%0050601" HelpContext="HK-Bezeichnung" />
+                <Button Id="%AID%_B-%TT%00026" Name="deleteAuthorization07" Text="Gerät löschen (Prog-Modus)" EventHandler="HK_deleteAuthorization07" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Geraet-Entfernen" />
                 <ParameterRefRef RefId="%AID%_P-%TT%00124_R-%TT%0012401" HelpContext="HK-Berechtigung-Aktiv" />
                 <choose ParamRefId="%AID%_P-%TT%00124_R-%TT%0012401"><when test="1">
                   <ParameterRefRef RefId="%AID%_P-%TT%00125_R-%TT%0012501" HelpContext="HK-Issuer-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00126_R-%TT%0012601" HelpContext="HK-Endpoint-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00127_R-%TT%0012701" HelpContext="HK-Aktions-ID" />
                 </when></choose>
               </ParameterBlock>
               <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 8">
+                <ParameterRefRef RefId="%AID%_P-%TT%00507_R-%TT%0050701" HelpContext="HK-Bezeichnung" />
+                <Button Id="%AID%_B-%TT%00027" Name="deleteAuthorization08" Text="Gerät löschen (Prog-Modus)" EventHandler="HK_deleteAuthorization08" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Geraet-Entfernen" />
                 <ParameterRefRef RefId="%AID%_P-%TT%00128_R-%TT%0012801" HelpContext="HK-Berechtigung-Aktiv" />
                 <choose ParamRefId="%AID%_P-%TT%00128_R-%TT%0012801"><when test="1">
                   <ParameterRefRef RefId="%AID%_P-%TT%00129_R-%TT%0012901" HelpContext="HK-Issuer-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00130_R-%TT%0013001" HelpContext="HK-Endpoint-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00131_R-%TT%0013101" HelpContext="HK-Aktions-ID" />
                 </when></choose>
               </ParameterBlock>
               <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 9">
+                <ParameterRefRef RefId="%AID%_P-%TT%00508_R-%TT%0050801" HelpContext="HK-Bezeichnung" />
+                <Button Id="%AID%_B-%TT%00028" Name="deleteAuthorization09" Text="Gerät löschen (Prog-Modus)" EventHandler="HK_deleteAuthorization09" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Geraet-Entfernen" />
                 <ParameterRefRef RefId="%AID%_P-%TT%00132_R-%TT%0013201" HelpContext="HK-Berechtigung-Aktiv" />
                 <choose ParamRefId="%AID%_P-%TT%00132_R-%TT%0013201"><when test="1">
                   <ParameterRefRef RefId="%AID%_P-%TT%00133_R-%TT%0013301" HelpContext="HK-Issuer-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00134_R-%TT%0013401" HelpContext="HK-Endpoint-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00135_R-%TT%0013501" HelpContext="HK-Aktions-ID" />
                 </when></choose>
               </ParameterBlock>
               <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 10">
+                <ParameterRefRef RefId="%AID%_P-%TT%00509_R-%TT%0050901" HelpContext="HK-Bezeichnung" />
+                <Button Id="%AID%_B-%TT%00029" Name="deleteAuthorization10" Text="Gerät löschen (Prog-Modus)" EventHandler="HK_deleteAuthorization10" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Geraet-Entfernen" />
                 <ParameterRefRef RefId="%AID%_P-%TT%00136_R-%TT%0013601" HelpContext="HK-Berechtigung-Aktiv" />
                 <choose ParamRefId="%AID%_P-%TT%00136_R-%TT%0013601"><when test="1">
                   <ParameterRefRef RefId="%AID%_P-%TT%00137_R-%TT%0013701" HelpContext="HK-Issuer-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00138_R-%TT%0013801" HelpContext="HK-Endpoint-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00139_R-%TT%0013901" HelpContext="HK-Aktions-ID" />
                 </when></choose>
               </ParameterBlock>
               <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 11">
+                <ParameterRefRef RefId="%AID%_P-%TT%00510_R-%TT%0051001" HelpContext="HK-Bezeichnung" />
+                <Button Id="%AID%_B-%TT%00030" Name="deleteAuthorization11" Text="Gerät löschen (Prog-Modus)" EventHandler="HK_deleteAuthorization11" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Geraet-Entfernen" />
                 <ParameterRefRef RefId="%AID%_P-%TT%00140_R-%TT%0014001" HelpContext="HK-Berechtigung-Aktiv" />
                 <choose ParamRefId="%AID%_P-%TT%00140_R-%TT%0014001"><when test="1">
                   <ParameterRefRef RefId="%AID%_P-%TT%00141_R-%TT%0014101" HelpContext="HK-Issuer-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00142_R-%TT%0014201" HelpContext="HK-Endpoint-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00143_R-%TT%0014301" HelpContext="HK-Aktions-ID" />
                 </when></choose>
               </ParameterBlock>
               <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 12">
+                <ParameterRefRef RefId="%AID%_P-%TT%00511_R-%TT%0051101" HelpContext="HK-Bezeichnung" />
+                <Button Id="%AID%_B-%TT%00031" Name="deleteAuthorization12" Text="Gerät löschen (Prog-Modus)" EventHandler="HK_deleteAuthorization12" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Geraet-Entfernen" />
                 <ParameterRefRef RefId="%AID%_P-%TT%00144_R-%TT%0014401" HelpContext="HK-Berechtigung-Aktiv" />
                 <choose ParamRefId="%AID%_P-%TT%00144_R-%TT%0014401"><when test="1">
                   <ParameterRefRef RefId="%AID%_P-%TT%00145_R-%TT%0014501" HelpContext="HK-Issuer-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00146_R-%TT%0014601" HelpContext="HK-Endpoint-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00147_R-%TT%0014701" HelpContext="HK-Aktions-ID" />
                 </when></choose>
               </ParameterBlock>
               <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 13">
+                <ParameterRefRef RefId="%AID%_P-%TT%00512_R-%TT%0051201" HelpContext="HK-Bezeichnung" />
+                <Button Id="%AID%_B-%TT%00032" Name="deleteAuthorization13" Text="Gerät löschen (Prog-Modus)" EventHandler="HK_deleteAuthorization13" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Geraet-Entfernen" />
                 <ParameterRefRef RefId="%AID%_P-%TT%00148_R-%TT%0014801" HelpContext="HK-Berechtigung-Aktiv" />
                 <choose ParamRefId="%AID%_P-%TT%00148_R-%TT%0014801"><when test="1">
                   <ParameterRefRef RefId="%AID%_P-%TT%00149_R-%TT%0014901" HelpContext="HK-Issuer-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00150_R-%TT%0015001" HelpContext="HK-Endpoint-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00151_R-%TT%0015101" HelpContext="HK-Aktions-ID" />
                 </when></choose>
               </ParameterBlock>
               <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 14">
+                <ParameterRefRef RefId="%AID%_P-%TT%00513_R-%TT%0051301" HelpContext="HK-Bezeichnung" />
+                <Button Id="%AID%_B-%TT%00033" Name="deleteAuthorization14" Text="Gerät löschen (Prog-Modus)" EventHandler="HK_deleteAuthorization14" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Geraet-Entfernen" />
                 <ParameterRefRef RefId="%AID%_P-%TT%00152_R-%TT%0015201" HelpContext="HK-Berechtigung-Aktiv" />
                 <choose ParamRefId="%AID%_P-%TT%00152_R-%TT%0015201"><when test="1">
                   <ParameterRefRef RefId="%AID%_P-%TT%00153_R-%TT%0015301" HelpContext="HK-Issuer-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00154_R-%TT%0015401" HelpContext="HK-Endpoint-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00155_R-%TT%0015501" HelpContext="HK-Aktions-ID" />
                 </when></choose>
               </ParameterBlock>
               <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 15">
+                <ParameterRefRef RefId="%AID%_P-%TT%00514_R-%TT%0051401" HelpContext="HK-Bezeichnung" />
+                <Button Id="%AID%_B-%TT%00034" Name="deleteAuthorization15" Text="Gerät löschen (Prog-Modus)" EventHandler="HK_deleteAuthorization15" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Geraet-Entfernen" />
                 <ParameterRefRef RefId="%AID%_P-%TT%00156_R-%TT%0015601" HelpContext="HK-Berechtigung-Aktiv" />
                 <choose ParamRefId="%AID%_P-%TT%00156_R-%TT%0015601"><when test="1">
                   <ParameterRefRef RefId="%AID%_P-%TT%00157_R-%TT%0015701" HelpContext="HK-Issuer-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00158_R-%TT%0015801" HelpContext="HK-Endpoint-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00159_R-%TT%0015901" HelpContext="HK-Aktions-ID" />
                 </when></choose>
               </ParameterBlock>
               <ParameterBlock Id="%AID%_PB-nnn" Text="Berechtigung 16">
+                <ParameterRefRef RefId="%AID%_P-%TT%00515_R-%TT%0051501" HelpContext="HK-Bezeichnung" />
+                <Button Id="%AID%_B-%TT%00035" Name="deleteAuthorization16" Text="Gerät löschen (Prog-Modus)" EventHandler="HK_deleteAuthorization16" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Geraet-Entfernen" />
                 <ParameterRefRef RefId="%AID%_P-%TT%00160_R-%TT%0016001" HelpContext="HK-Berechtigung-Aktiv" />
                 <choose ParamRefId="%AID%_P-%TT%00160_R-%TT%0016001"><when test="1">
                   <ParameterRefRef RefId="%AID%_P-%TT%00161_R-%TT%0016101" HelpContext="HK-Issuer-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00162_R-%TT%0016201" HelpContext="HK-Endpoint-ID" /><ParameterRefRef RefId="%AID%_P-%TT%00163_R-%TT%0016301" HelpContext="HK-Aktions-ID" />

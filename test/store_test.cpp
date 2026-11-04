@@ -115,6 +115,34 @@ int main()
     EndpointId unknown = mapping.endpoint; unknown[0] = 77;
     assert(lookup(reboot.mappings, mapping.issuer, unknown) == InvalidId);
 
+    // Selected deletion preserves the reader identity, issuer and other devices.
+    HomeKeyCredentialStore deletion;
+    assert(deletion.begin());
+    auto second = endpoint; second.id[0] = 42;
+    deletion.entries.front().endpoints.push_back(second);
+    auto secondMapping = mapping; secondMapping.endpoint[0] = 42; secondMapping.accessId = 1498;
+    assert(HomeKey::bind(deletion.mappings, secondMapping));
+    deletion.save();
+    auto deletionGeneration = deletion.generation;
+    assert(deletion.removeEndpoint(mapping.issuer, mapping.endpoint));
+    assert(deletion.generation != deletionGeneration);
+    assert(!deletion.contains(mapping.issuer, mapping.endpoint));
+    assert(deletion.contains(secondMapping.issuer, secondMapping.endpoint));
+    assert(deletion.identity.private_key == store.identity.private_key);
+    assert(deletion.entries.front().public_key == issuer.public_key);
+    assert(lookup(deletion.mappings, mapping.issuer, mapping.endpoint) == InvalidId);
+    assert(lookup(deletion.mappings, secondMapping.issuer, secondMapping.endpoint) == 1498);
+    HomeKeyCredentialStore deletedBoot; assert(deletedBoot.begin());
+    assert(!deletedBoot.contains(mapping.issuer, mapping.endpoint));
+    assert(deletedBoot.contains(secondMapping.issuer, secondMapping.endpoint));
+    deletionGeneration = deletion.generation;
+    assert(!deletion.removeEndpoint(mapping.issuer, mapping.endpoint));
+    assert(deletion.generation == deletionGeneration); // Missing IDs cannot mutate the store.
+    commitFails = true;
+    assert(!deletion.removeEndpoint(secondMapping.issuer, secondMapping.endpoint));
+    assert(!deletion.healthy && deletion.generation != deletionGeneration);
+    commitFails = false;
+
     // Identity replacement invalidates every endpoint and its authorization mapping.
     auto unchanged = reboot.identity;
     reboot.provision_identity(unchanged);

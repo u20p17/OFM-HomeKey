@@ -16,6 +16,11 @@ int main() {
     assert(decode(request, 6, r) && r.index == 63 && r.generation == 0x81234567);
     assert(!decode(request, 5, r));
     request[1] = 64; assert(!decode(request, 6, r));
+    request[0] = 4; request[1] = 63;
+    assert(decode(request, 6, r) && r.command == 4 && r.index == 63 && r.generation == 0x81234567);
+    assert(!decode(request, 5, r));
+    request[1] = 64; assert(!decode(request, 6, r));
+    request[0] = 5; request[1] = 0; assert(!decode(request, 6, r));
     uint8_t out[24]; std::memset(out, 0xff, sizeof(out));
     assert(status(out, true, false, true, 7, 2, 64, 0x81234567) == 12);
     assert(out[0] == Ok && out[1] == Version && out[2] == 1 && out[3] == 0 && out[4] == 1);

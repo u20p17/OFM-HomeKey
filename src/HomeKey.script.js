@@ -1,5 +1,5 @@
 // ETS online button handlers. Only public IDs cross KNX; setup codes stay local.
-var HK_onlineErrors = ["", "Gerät beschäftigt", "Ungültige Anfrage", "ETS-Anwendung zuerst herunterladen", "Home Key nicht gestartet", "Inbetriebnahme gesperrt", "Warteschlange beschäftigt", "Speicher/Krypto nicht verfügbar", "Geräteliste geändert; erneut lesen", "Endpoint nicht gefunden"];
+var HK_onlineErrors = ["", "Gerät beschäftigt", "Ungültige Anfrage", "ETS-Anwendung zuerst herunterladen", "Home Key nicht gestartet", "Inbetriebnahme gesperrt", "Warteschlange beschäftigt", "Speicher/Krypto nicht verfügbar", "Geräteliste geändert; erneut lesen", "Endpoint nicht gefunden", "Programmiermodus zuerst einschalten"];
 var HK_commissioningText = ["bereit / Code gespeichert", "geöffnet", "geschlossen", "nicht erlaubt", "lokalen Setup-Code zuerst setzen", "Worker beschäftigt", "Code konnte nicht gespeichert werden", "angefordert"];
 var HK_authorizationText = ["deaktiviert", "USB-Berechtigungen", "ETS-Tabelle akzeptiert", "ETS-Tabelle ungültig", "Endpoint noch nicht provisioniert", "UID-ID belegt", "Speicher/Krypto nicht verfügbar"];
 
@@ -109,7 +109,7 @@ function HK_readEndpoints(device, online, progress) {
             HK_requireOk(response);
             if (response.length != 22 || response[2] != index || response[3] != count) throw new Error("Home Key: Ungültige Endpoint-Antwort");
             for (var g = 0; g < 4; g++) if (response[g + 4] != generation[g]) throw new Error("Home Key: Inkonsistente Geräteliste");
-            var entry = { issuer: HK_hex(response, 8, 8), endpoint: HK_hex(response, 16, 6) };
+            var entry = { issuer: HK_hex(response, 8, 8), endpoint: HK_hex(response, 16, 6), index: index, generation: generation.slice(0) };
             var key = entry.issuer + "." + entry.endpoint;
             if (seen[key]) throw new Error("Home Key: Doppelte Geräte-ID");
             seen[key] = true; entries.push(entry);
@@ -131,10 +131,10 @@ function HK_importEndpoints(device, online, progress, context) {
         for (var row = 1; row <= 16; row++) {
             var prefix = "HK_Authorization" + (row < 10 ? "0" : "") + row;
             var fields = { enabled: device.getParameterByName(prefix + "Enabled"), issuer: device.getParameterByName(prefix + "Issuer"),
-                endpoint: device.getParameterByName(prefix + "Endpoint"), action: device.getParameterByName(prefix + "AccessId") };
-            if (!fields.enabled || !fields.issuer || !fields.endpoint || !fields.action) throw new Error("Home Key: ETS-Tabelle fehlt; passende Anwendung verwenden");
+                endpoint: device.getParameterByName(prefix + "Endpoint"), action: device.getParameterByName(prefix + "AccessId"), description: device.getParameterByName(prefix + "Description") };
+            if (!fields.enabled || !fields.issuer || !fields.endpoint || !fields.action || !fields.description) throw new Error("Home Key: ETS-Tabelle fehlt; passende Anwendung verwenden");
             var issuer = String(fields.issuer.value).toLowerCase(), endpoint = String(fields.endpoint.value).toLowerCase();
-            if (issuer || endpoint || Number(fields.enabled.value) != 0 || Number(fields.action.value) != 0) {
+            if (issuer || endpoint || Number(fields.enabled.value) != 0 || Number(fields.action.value) != 0 || String(fields.description.value)) {
                 if (/^[0-9a-f]{16}$/.test(issuer) && /^[0-9a-f]{12}$/.test(endpoint)) existing[issuer + "." + endpoint] = true;
             } else free.push(fields);
         }
@@ -160,3 +160,70 @@ function HK_importEndpoints(device, online, progress, context) {
         HK_setOnlineStatus(device, text); progress.setText(text);
     });
 }
+
+function HK_authorizationFields(device, row) {
+    var prefix = "HK_Authorization" + (row < 10 ? "0" : "") + row;
+    var fields = { enabled: device.getParameterByName(prefix + "Enabled"), issuer: device.getParameterByName(prefix + "Issuer"),
+        endpoint: device.getParameterByName(prefix + "Endpoint"), action: device.getParameterByName(prefix + "AccessId"), description: device.getParameterByName(prefix + "Description") };
+    if (!fields.enabled || !fields.issuer || !fields.endpoint || !fields.action || !fields.description)
+        throw new Error("Home Key: Passende ETS-Anwendung mit Bezeichnungen erforderlich");
+    return fields;
+}
+function HK_deleteAuthorization(row, device, online, progress, context) {
+    HK_run(device, online, progress, function() {
+        var target = HK_authorizationFields(device, row);
+        var issuer = String(target.issuer.value).toLowerCase(), endpoint = String(target.endpoint.value).toLowerCase();
+        if (!/^[0-9a-f]{16}$/.test(issuer) || !/^[0-9a-f]{12}$/.test(endpoint))
+            throw new Error("Home Key: Diese Zeile enthält keine vollständige Geräte-ID");
+        var matches = [];
+        for (var i = 1; i <= 16; i++) {
+            var fields = HK_authorizationFields(device, i);
+            if (String(fields.issuer.value).toLowerCase() == issuer && String(fields.endpoint.value).toLowerCase() == endpoint)
+                matches.push(fields);
+        }
+        var entries = HK_readEndpoints(device, online, progress), found = null;
+        for (var i = 0; i < entries.length; i++)
+            if (entries[i].issuer == issuer && entries[i].endpoint == endpoint) found = entries[i];
+        if (progress.isCanceled()) throw new Error("Home Key: Abgebrochen");
+        if (found) HK_requireOk(HK_call(device, online, progress, [4, found.index].concat(found.generation)));
+        // Do not clear ETS permissions unless revocation succeeded or a stable
+        // reader snapshot confirmed that this endpoint is already absent.
+        var snapshots = [];
+        for (var i = 0; i < matches.length; i++) {
+            var f = matches[i];
+            snapshots.push([f.enabled.value, f.issuer.value, f.endpoint.value, f.action.value, f.description.value]);
+        }
+        try {
+            for (var i = 0; i < matches.length; i++) {
+                var f = matches[i];
+                if (String(f.issuer.value).toLowerCase() != issuer || String(f.endpoint.value).toLowerCase() != endpoint)
+                    throw new Error("ETS-Zeile wurde während des Löschens geändert");
+                f.enabled.value = 0; f.issuer.value = ""; f.endpoint.value = ""; f.action.value = 0; f.description.value = "";
+            }
+        } catch (error) {
+            for (var i = 0; i < matches.length; i++) {
+                var f = matches[i], old = snapshots[i];
+                try { f.enabled.value = old[0]; f.issuer.value = old[1]; f.endpoint.value = old[2]; f.action.value = old[3]; f.description.value = old[4]; } catch (ignored) { }
+            }
+            throw new Error("Gerät im Reader entfernt; ETS-Zeilen nicht geleert. Erneut versuchen: " + error.message);
+        }
+        var text = "Gerät entfernt; " + matches.length + " ETS-Berechtigung(en) geleert. ETS-Projekt speichern und Parameter herunterladen.";
+        HK_setOnlineStatus(device, text); progress.setText(text);
+    });
+}
+function HK_deleteAuthorization01(device, online, progress, context) { HK_deleteAuthorization(1, device, online, progress, context); }
+function HK_deleteAuthorization02(device, online, progress, context) { HK_deleteAuthorization(2, device, online, progress, context); }
+function HK_deleteAuthorization03(device, online, progress, context) { HK_deleteAuthorization(3, device, online, progress, context); }
+function HK_deleteAuthorization04(device, online, progress, context) { HK_deleteAuthorization(4, device, online, progress, context); }
+function HK_deleteAuthorization05(device, online, progress, context) { HK_deleteAuthorization(5, device, online, progress, context); }
+function HK_deleteAuthorization06(device, online, progress, context) { HK_deleteAuthorization(6, device, online, progress, context); }
+function HK_deleteAuthorization07(device, online, progress, context) { HK_deleteAuthorization(7, device, online, progress, context); }
+function HK_deleteAuthorization08(device, online, progress, context) { HK_deleteAuthorization(8, device, online, progress, context); }
+function HK_deleteAuthorization09(device, online, progress, context) { HK_deleteAuthorization(9, device, online, progress, context); }
+function HK_deleteAuthorization10(device, online, progress, context) { HK_deleteAuthorization(10, device, online, progress, context); }
+function HK_deleteAuthorization11(device, online, progress, context) { HK_deleteAuthorization(11, device, online, progress, context); }
+function HK_deleteAuthorization12(device, online, progress, context) { HK_deleteAuthorization(12, device, online, progress, context); }
+function HK_deleteAuthorization13(device, online, progress, context) { HK_deleteAuthorization(13, device, online, progress, context); }
+function HK_deleteAuthorization14(device, online, progress, context) { HK_deleteAuthorization(14, device, online, progress, context); }
+function HK_deleteAuthorization15(device, online, progress, context) { HK_deleteAuthorization(15, device, online, progress, context); }
+function HK_deleteAuthorization16(device, online, progress, context) { HK_deleteAuthorization(16, device, online, progress, context); }

@@ -337,6 +337,18 @@ bool HomeKeyModule::processFunctionProperty(uint8_t object, uint8_t property, ui
         {
             if (index++ != request.index) continue;
             if (issuer.id.size() != 8 || item.id.size() != 6) { result[0] = HomeKeyOnline::Unavailable; return true; }
+            if (request.command == 4)
+            {
+                if (!knx.progMode()) { result[0] = HomeKeyOnline::ProgrammingRequired; return true; }
+                HomeKey::IssuerId issuerId{};
+                HomeKey::EndpointId endpointId{};
+                std::copy(issuer.id.begin(), issuer.id.end(), issuerId.begin());
+                std::copy(item.id.begin(), item.id.end(), endpointId.begin());
+                cancelCommissioning();
+                result[0] = store.removeEndpoint(issuerId, endpointId) ? HomeKeyOnline::Ok : HomeKeyOnline::Unavailable;
+                endpointDirty = true;
+                return true;
+            }
             resultLength = HomeKeyOnline::endpoint(result, request.index, count, store.generation, issuer.id.data(), item.id.data());
             return true;
         }

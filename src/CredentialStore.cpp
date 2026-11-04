@@ -180,6 +180,22 @@ void HomeKeyCredentialStore::provision_identity(const ddk::ReaderIdentity& value
     identity = value;
 }
 
+bool HomeKeyCredentialStore::removeEndpoint(const HomeKey::IssuerId& issuerId, const HomeKey::EndpointId& endpointId)
+{
+    std::lock_guard<std::recursive_mutex> guard(mutex);
+    if (!healthy || !contains(issuerId, endpointId)) return false;
+    for (auto& issuer : entries)
+    {
+        if (issuer.id.size() != issuerId.size() || !std::equal(issuer.id.begin(), issuer.id.end(), issuerId.begin())) continue;
+        issuer.endpoints.erase(std::remove_if(issuer.endpoints.begin(), issuer.endpoints.end(), [&](const auto& endpoint)
+        {
+            return endpoint.id.size() == endpointId.size() && std::equal(endpoint.id.begin(), endpoint.id.end(), endpointId.begin());
+        }), issuer.endpoints.end());
+    }
+    save(); // Prunes local mappings and invalidates every queued authorization event.
+    return healthy;
+}
+
 bool HomeKeyCredentialStore::eraseReaderKey()
 {
     std::lock_guard<std::recursive_mutex> guard(mutex);

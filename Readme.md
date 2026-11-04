@@ -1,4 +1,4 @@
-# OFM-HomeKey 0.3.0
+# OFM-HomeKey 0.4.0
 
 Local ESP32 prototype for OAM-AccessControl, on `v1dev_HomeKey`.
 No remote repository or publication is created. The application records this
@@ -128,6 +128,31 @@ action ID, configure its NFCACT action, enable the row and download to authorize
 it. Importing IDs alone grants no access. No private keys/setup codes are read.
 The online status field records the last query and is refreshed on demand.
 
+
+#### Link a Home Key permission to a KNX action
+
+`Logische NFC-Aktions-ID` is the NFC credential/tag slot (0..1499), not the
+number of an action channel. For example, assign the phone slot **100** in its
+Home Key permission row. In **Zuweisung von NFC-Tags zu Aktionen**, add
+**Tag 100 → Aktion 1**. Configure **Aktion 1** with the required switching
+behavior and link its switching communication object to the KNX actuator's
+group address. Download the changed parameters. Authentication then follows
+phone → slot 100 → NFC assignment → action 1 → KNX group address.
+
+Conventional UID tags use the same slot namespace. Keep their occupied slots
+separate from active Home Key permission IDs; an occupied UID slot blocks the
+Home Key permission. Different slots may select the same action, for example
+**Tag 5 → Aktion 1** alongside **Tag 100 → Aktion 1**. Enable
+`Konventionelle UID-Tags zulassen` when using ordinary tags with the external
+reader.
+
+The NFC table's **Info holen** button reads the conventional UID tag stored in
+the selected slot through the ETS online connection and fills the information
+field with the action description and tag name. It does not scan a tag, assign
+permissions or trigger the action. Home Key slots deliberately contain no UID
+tag, so this query reports no tag for them; the Home Key permission's
+**Bezeichnung** is managed separately.
+
 The ETS Group Monitor remains an alternative. Assign addresses to these objects:
 
 | KO | Function | DPT |
@@ -235,8 +260,8 @@ provisioned on this board during these software checks.
 Lock feedback is KO 11, 1=physically locked; its initial HomeKit state is Unknown.
 The XIAO Apple Home Key TP and IP targets use `HOMEKEY_READER_I2C`:
 SDA=GPIO5 (D4), SCL=GPIO6 (D5), IRQ=GPIO3 (D2), VEN=GPIO4 (D3),
-DWL=GPIO2 (D1), address 0x28 at 400 kHz. VDD connects to 3.3 V and VANT
-to 5 V, with common ground. Both select `HOMEKEY_PN7161_VANT_MV=5000` and hold
+DWL=GPIO2 (D1), address 0x28 at 400 kHz. VDD and VANT both connect to
+3.3 V, with common ground. Both default to `HOMEKEY_PN7161_VANT_MV=3300` and hold
 DWL low from setup. This wiring cannot be combined with the optional
 fingerprint/relay peripheral profile. Earlier XIAO SPI builds are incompatible
 with this I2C module and must be replaced.
@@ -255,8 +280,9 @@ returned without replay; an uninitialized bus is rejected before writing.
 A low-level NACK log can occur during standby wake-up even when the retry
 succeeds. The shared Wire bus stays alive when the reader stops.
 `HOMEKEY_PN7161_VANT_MV` selects the PMU/TXLDO preset in each environment's
-inherited `build_flags`: REG1 uses `3300` (VDD=VANT=3.3 V), while XIAO uses
-`5000` (VDD=3.3 V, VANT=5 V). Only these two values are supported. The complete
+build configuration: REG1 and XIAO default to `3300` (VDD=VANT=3.3 V).
+An explicit `5000` override requires VDD=3.3 V and VANT=5 V wiring.
+Only these two values are supported. The complete
 preset is applied on every reader initialization, following the
 [module vendor](https://www.elechouse.com/docs/pn7161/) configuration.
 The flag configures the reader; it does not change the physical supply voltage.
@@ -286,8 +312,14 @@ paths; the REG1 sizes retain about 5 KiB beyond the observed startup usage.
 The Home Key page follows OAM-NeoPixel Studio's compact tabs, green actions,
 rounded controls and bordered cards. `Setup-Code`, `Apple Home` and `Status`
 separate code configuration, local QR generation and live commissioning status.
-Arrow keys plus Home/End navigate the tabs; leaving the Apple Home tab clears
-the QR code and its input. The responsive layout stacks cards on small screens.
+Arrow keys plus Home/End navigate the tabs. The selected tab is stored in the
+URL fragment (`#setup-code`, `#apple-home`, `#status`) and restored after reload;
+no setup code is stored in the URL or browser storage. Leaving the Apple Home
+tab clears the QR code and its input. Status polls that find commissioning
+blocked, pairing closed or the device offline hide the QR code but retain the
+input in the open page. An amber message names the exact ETS permission or
+pairing action required; the QR button becomes available once those conditions
+are satisfied. The responsive layout stacks cards on small screens.
 Disabled setup-code actions name the missing ETS permission or programming-mode
 requirement instead of showing only a generic warning. No commissioning or
 authorization gates are changed.
@@ -329,17 +361,45 @@ endpoint/identity revocation, stale-event generation, corrupt/truncated storage,
 failed NVS commits and reset. HomeSpan/NVS commissioning commands and real KNX
 telegram timing still require device testing.
 
+## ETS device names and removal
+
+Home Key 0.4 / development application 11.3 adds a 32-character `Bezeichnung`
+field to every ETS permission row. Names are descriptive metadata; they never
+authorize access. Import preserves existing descriptions and treats a named
+incomplete row as occupied. Description storage follows the original 16 × 33
+byte authorization rows, whose ID/action layout remains unchanged.
+
+Each row has `Gerät löschen (Prog-Modus)`. Turn on programming mode and click
+that row's button to revoke its endpoint persistently in the reader, close any
+open commissioning window and invalidate queued authorization events. Reader
+identity, issuer/controller pairing and other endpoints remain intact. Local
+mappings for the endpoint are pruned. Matching ETS rows and their descriptions
+are cleared after the reader confirms deletion; save the ETS project and
+redownload the parameters. An already absent endpoint can be cleared from ETS
+without deleting another device. Busy/stale lists, missing programming mode and
+persistence failures preserve the ETS rows. A failed ETS parameter write after
+reader revocation restores the row values and reports that cleanup must be
+retried; it does not restore the reader credential.
+
+Use the regenerated application/header together and regenerate the signed
+knxprod with OpenKNXproducer on the ETS machine. This changes the development
+application version to 11.3 and requires a new ETS application download. The
+reader's NVS credential schema is unchanged, so this update does not itself
+reset provisioned endpoints.
+
 ## ETS online protocol and script tests
 
 The module exposes function property object 165/property 3 through the unchanged
 OGM-Common wrapper (object 158/property 3), including response fragmentation for
-small APDUs. Requests: `0` status, `1` open, `2` close, or `3,index,generationBE32`
-for an endpoint. Replies start with result/version (protocol version 1). Status
+small APDUs. Requests: `0` status, `1` open, `2` close,
+`3,index,generationBE32` for an endpoint, or `4,index,generationBE32` to delete
+that endpoint while programming mode is active. Deletion replies use the two-byte
+result/version envelope; result 10 means programming mode is required. Replies start with result/version (protocol version 1). Status
 is 12 bytes: result, version, enabled, permitted, open, commissioning result,
 authorization status, endpoint count, generation BE32. Endpoint is 22 bytes:
 result, version, index, count, generation BE32, issuer ID (8), endpoint ID (6).
 Busy/stale snapshots retry; commissioning result 7 means the request is pending.
-Read-only function-property state requests cannot open/close commissioning.
+Read-only function-property state requests cannot open/close commissioning or delete endpoints.
 
 From OAM-AccessControl, run:
 

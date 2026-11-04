@@ -25,7 +25,12 @@
     }
 
     const tabs = ['setup', 'pairing', 'status'];
-    function selectTab(name) {
+    const tabHashes = { setup: '#setup-code', pairing: '#apple-home', status: '#status' };
+    function tabFromHash() {
+        const hash = window.location ? window.location.hash : '';
+        return tabs.find(tab => tabHashes[tab] === hash) || 'setup';
+    }
+    function selectTab(name, updateHash = true) {
         for (const tab of tabs) {
             document.getElementById('homekey-panel-' + tab).hidden = tab !== name;
             const button = document.getElementById('homekey-tab-' + tab);
@@ -33,6 +38,9 @@
             button.tabIndex = tab === name ? 0 : -1;
         }
         if (name !== 'pairing') clearQr();
+        if (updateHash && window.history) {
+            window.history.replaceState(null, '', tabHashes[name]);
+        }
     }
     tabs.forEach((tab, index) => {
         const button = document.getElementById('homekey-tab-' + tab);
@@ -46,17 +54,21 @@
             document.getElementById('homekey-tab-' + tabs[next]).focus();
         });
     });
-    selectTab('setup');
+    window.addEventListener('hashchange', () => selectTab(tabFromHash(), false));
+    selectTab(tabFromHash(), false);
 
     function validCode(value) {
         return /^\d{8}$/.test(value) && !/^(\d)\1{7}$/.test(value) &&
             value !== '12345678' && value !== '87654321';
     }
 
-    function clearQr() {
+    function hideQr() {
         qrImage.replaceChildren();
         qrImage.hidden = qrHide.hidden = true;
         document.getElementById('homekey-qr-placeholder').hidden = false;
+    }
+    function clearQr() {
+        hideQr();
         qrCode.value = '';
     }
 
@@ -71,7 +83,7 @@
         event.preventDefault();
         if (qrShow.disabled) return;
         if (!validCode(qrCode.value)) {
-            clearQr();
+            hideQr();
             qrResult.textContent = 'Bitte einen gültigen Setup-Code mit acht Ziffern eingeben.';
             return;
         }
@@ -103,8 +115,18 @@
             qrShow.disabled = !status.enabled || !status.commissioning || !status.pairing ||
                 !status.codeConfigured || !setupId || status.codeState === 1 || submitting || waiting;
             if (qrShow.disabled) {
-                clearQr();
-                qrResult.textContent = 'Zum Anzeigen einen Setup-Code festlegen und das Pairing-Fenster öffnen.';
+                hideQr();
+                qrResult.dataset.state = 'blocked';
+                qrResult.textContent = !status.enabled
+                    ? 'In der ETS „Apple Home Key aktivieren“ auf Ja setzen und die Parameter laden.'
+                    : !status.commissioning
+                    ? 'In der ETS „NFC-Inbetriebnahme über USB/KNX erlauben“ auf Ja setzen und die Parameter laden. Der eingegebene Code bleibt erhalten.'
+                    : !status.codeConfigured ? 'Zuerst im Tab Setup-Code einen Code speichern. Der hier eingegebene Code bleibt erhalten.'
+                    : !status.pairing ? 'In der ETS „Pairing öffnen (5 Minuten)“ wählen. Der eingegebene Code bleibt erhalten.'
+                    : 'Initialisierung oder Speicherung läuft. Bitte kurz warten; der eingegebene Code bleibt erhalten.';
+            } else if (qrResult.dataset.state === 'blocked') {
+                qrResult.dataset.state = 'ready';
+                qrResult.textContent = 'Pairing-Fenster geöffnet. Der eingegebene Code kann jetzt verwendet werden.';
             }
             previousRow.hidden = !status.codeConfigured;
             previous.required = status.codeConfigured;
@@ -145,8 +167,9 @@
             }
         } catch (error) {
             qrShow.disabled = true;
-            clearQr();
-            qrResult.textContent = 'Keine Verbindung zum Gerät; QR-Code ausgeblendet.';
+            hideQr();
+            qrResult.dataset.state = 'blocked';
+            qrResult.textContent = 'Keine Verbindung zum Gerät; QR-Code ausgeblendet. Der eingegebene Code bleibt erhalten.';
             save.disabled = true;
             permission.textContent = 'Keine Verbindung zum Gerät.';
             permission.dataset.state = 'waiting';

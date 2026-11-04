@@ -6,9 +6,9 @@ function fixture(entries) {
     var parameters = { HK_OnlineStatus: { value: '' } }, calls = [], disconnected = 0, generation = [0,0,0,1], opened = false;
     for (var i=1;i<=16;i++) {
         var p='HK_Authorization'+(i<10?'0':'')+i;
-        parameters[p+'Enabled']={value:0}; parameters[p+'Issuer']={value:''}; parameters[p+'Endpoint']={value:''}; parameters[p+'AccessId']={value:0};
+        parameters[p+'Enabled']={value:0}; parameters[p+'Issuer']={value:''}; parameters[p+'Endpoint']={value:''}; parameters[p+'AccessId']={value:0}; parameters[p+'Description']={value:''};
     }
-    var f={ parameters:parameters, calls:calls, fail:null, canceled:false, generation:generation, entries:entries,
+    var f={ parameters:parameters, calls:calls, fail:null, canceled:false, programming:true, generation:generation, entries:entries,
         device:{getParameterByName:function(name){return parameters[name];}},
         online:{connect:function(){},disconnect:function(){disconnected++;}},
         progress:{setText:function(){},setProgress:function(){},isCanceled:function(){return f.canceled;}},
@@ -19,6 +19,12 @@ function fixture(entries) {
         if(data[0]==0) return [0,1,1,1,opened?1:0,opened?1:0,2,f.entries.length].concat(f.generation);
         if(data[0]==1) {opened=true;return [0,1];}
         if(data[0]==2) {opened=false;return [0,1];}
+        if(data[0]==4) {
+            if(!f.programming)return [10,1];
+            if(JSON.stringify(data.slice(2))!=JSON.stringify(f.generation))return [8,1];
+            if(!f.entries[data[1]])return [9,1];
+            f.entries.splice(data[1],1);f.generation[3]++;opened=false;return [0,1];
+        }
         var e=f.entries[data[1]];
         return [0,1,data[1],f.entries.length].concat(f.generation,e.issuer,e.endpoint);
     };
@@ -53,6 +59,44 @@ test('Failed parameter writes roll back newly touched rows',function(){var f=fix
 test('Pairing open/close buttons and status refresh use online management',function(){var f=fixture([]);HK_openPairing(f.device,f.online,f.progress,{});assert(f.opened(),'Open failed');HK_closePairing(f.device,f.online,f.progress,{});assert(!f.opened(),'Close failed');HK_refreshStatus(f.device,f.online,f.progress,{});assert(f.parameters.HK_OnlineStatus.value.indexOf('geschlossen')>=0,'Status missing');assert(f.disconnected()==3,'Connection leaked');});
 test('Cancellation after an accepted open closes the queued request',function(){var f=fixture([]);f.fail=function(data){if(data[0]==1)f.canceled=true;};rejects(function(){HK_openPairing(f.device,f.online,f.progress,{});},'Should cancel');assert(!f.opened()&&f.calls.some(function(c){return c[0]==2;}),'Late open not canceled');});
 test('Worker provisioning failures are surfaced and cancel the accepted open',function(){var f=fixture([]),requested=false;f.fail=function(data){if(data[0]==1)requested=true;if(data[0]==0&&requested)return [0,1,1,1,0,4,2,0,0,0,0,1];};rejects(function(){HK_openPairing(f.device,f.online,f.progress,{});},'Should reject no private code');assert(!f.opened(),'Window left open');});
+test('Descriptions survive import; a named incomplete row is not reused',function(){
+    var f=fixture([entry(171)]);f.parameters.HK_Authorization01Description.value='Julias iPhone';
+    imported(f);assert(f.parameters.HK_Authorization01Description.value=='Julias iPhone','Description overwritten');
+    assert(readFields(f,1)[1]==''&&readFields(f,2)[2]=='0123456789ab','Named row reused');
+});
+test('Delete selected device, all matching ETS rows and descriptions; keep other devices',function(){
+    var f=fixture([entry(171),entry(172)]);imported(f);
+    f.parameters.HK_Authorization01Description.value='Altes iPhone';
+    f.parameters.HK_Authorization02Description.value='Neues iPhone';
+    f.parameters.HK_Authorization03Issuer.value=readFields(f,1)[1];f.parameters.HK_Authorization03Endpoint.value=readFields(f,1)[2];
+    f.parameters.HK_Authorization03Description.value='Duplikat';
+    HK_deleteAuthorization01(f.device,f.online,f.progress,{});
+    assert(f.entries.length==1&&f.entries[0].endpoint[5]==172,'Wrong device deleted');
+    assert(readFields(f,1)[1]==''&&readFields(f,3)[1]=='','Matching rows not cleared');
+    assert(f.parameters.HK_Authorization01Description.value==''&&f.parameters.HK_Authorization03Description.value=='','Description not cleared');
+    assert(f.parameters.HK_Authorization02Description.value=='Neues iPhone'&&readFields(f,2)[2]=='0123456789ac','Other row changed');
+    var request=f.calls.filter(function(c){return c[0]==4;})[0];assert(request.length==6&&request[1]==0&&request[5]==1,'Deletion did not use generation snapshot');
+});
+test('Already absent device can be removed from ETS without deleting a different endpoint',function(){
+    var f=fixture([entry(171)]);imported(f);f.entries=[];
+    HK_deleteAuthorization01(f.device,f.online,f.progress,{});
+    assert(readFields(f,1)[1]=='','Stale ETS row retained');assert(!f.calls.some(function(c){return c[0]==4;}),'Sent blind deletion');
+});
+test('No programming mode, stale list or device write failure leaves ETS rights intact',function(){
+    for(var failure=0;failure<3;failure++){
+        var f=fixture([entry(171)]);imported(f);f.parameters.HK_Authorization01Description.value='Keep me';
+        if(failure==0)f.programming=false;
+        else f.fail=function(data){if(data[0]==4)return [failure==1?8:7,1];};
+        rejects(function(){HK_deleteAuthorization01(f.device,f.online,f.progress,{});},'Deletion should fail');
+        assert(readFields(f,1)[2]=='0123456789ab'&&f.parameters.HK_Authorization01Description.value=='Keep me','Failed deletion cleared ETS');
+        assert(f.entries.length==1,'Failed deletion changed devices');
+    }
+});
+test('Canceled deletion never invokes mutating command',function(){
+    var f=fixture([entry(171)]);imported(f);f.canceled=true;
+    rejects(function(){HK_deleteAuthorization01(f.device,f.online,f.progress,{});},'Deletion should cancel');
+    assert(!f.calls.some(function(c){return c[0]==4;})&&readFields(f,1)[1]!='','Cancellation mutated credentials');
+});
 test('Real Common wrapper reassembles endpoint replies at 15-byte APDU size',function(){
     var f=fixture([entry(171)]),incoming=[],reply=[],position=0,packages=0,reads=0;
     Log={info:function(){}};

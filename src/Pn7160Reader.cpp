@@ -60,9 +60,9 @@ bool Pn7160Reader::init() {
         stop();
         return false;
     }
-    uint8_t frameSize = m_ecpData.size() - 2;
+    uint8_t frameSize = m_ecpData[0] == 0x6A ? m_ecpData.size() - 2 : 0;
     std::vector<uint8_t> CFG = { 0x01, 0xA0, 0x6C, 0x1E, frameSize };
-    CFG.insert(CFG.end(), m_ecpData.begin(), m_ecpData.end() - 2);
+    CFG.insert(CFG.end(), m_ecpData.begin(), m_ecpData.begin() + frameSize);
     CFG.resize(34, 0x00);
 
     if (const esp_err_t err = m_nci->core_set_config(CFG); err != nci::STATUS_OK) {
@@ -435,14 +435,14 @@ bool Pn7160Reader::healthCheck() {
         return false;
     }
 
-    uint8_t frameSize = m_ecpData.size() - 2; // 16 bytes (Header + GID)
+    uint8_t frameSize = m_ecpData[0] == 0x6A ? m_ecpData.size() - 2 : 0; // 16 bytes (Header + GID)
     std::vector<uint8_t> CFG = {
         0x01,        // Number of parameter fields
         0xA0, 0x6C,  // Tag: ECP Configuration
         0x1E,        // Length
         frameSize    // Frame size
     };
-    CFG.insert(CFG.end(), m_ecpData.begin(), m_ecpData.end() - 2);
+    CFG.insert(CFG.end(), m_ecpData.begin(), m_ecpData.begin() + frameSize);
     CFG.resize(34, 0x00); // Pad to 34 bytes (5 header bytes + 29 data bytes)
 
     esp_err_t ret = m_nci->core_set_config(CFG);

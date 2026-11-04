@@ -4,6 +4,9 @@
 #include "HomeKeyOnline.h"
 #include "HomeKeyWifi.h"
 #include "Pn7160Reader.hpp"
+#ifdef OPENKNX_NFC_ST25R3916_I2C
+#include "St25r3916Reader.hpp"
+#endif
 #include "AccessControl.h"
 #include <algorithm>
 #include <sstream>
@@ -29,7 +32,7 @@ void HomeKeyModule::setup()
     if (sodium_init() < 0 || !store.begin())
     {
         logErrorP("Home Key storage/crypto unavailable; access disabled");
-        return;
+        fatal = true; // HomeKey fails closed; ordinary UID scanning remains available.
     }
     events = xQueueCreate(4, sizeof(Event));
     if (!events) { fatal = true; logErrorP("Home Key event queue unavailable"); return; }
@@ -42,8 +45,9 @@ void HomeKeyModule::setup()
 
 void HomeKeyModule::loop()
 {
-    if (!knx.configured()) { enabled = false; policyLoaded = false; webCodeAllowed = false; cancelCommissioning(); return; }
-    if (!events) { enabled = false; webCodeAllowed = false; cancelCommissioning(); updateStatus(); return; }
+    if (!knx.configured()) { readerEnabled = false; enabled = false; policyLoaded = false; webCodeAllowed = false; cancelCommissioning(); return; }
+    readerEnabled = ParamACC_NfcScanner != 0 && !readerFatal;
+    if (!events) { readerEnabled = false; enabled = false; webCodeAllowed = false; cancelCommissioning(); updateStatus(); return; }
     if (!policyLoaded)
     {
         std::unique_lock<std::recursive_mutex> guard(store.mutex, std::try_to_lock);
@@ -58,7 +62,7 @@ void HomeKeyModule::loop()
         logInfoP("Authorization source: %s; table %s; %u active mapping(s)",
             etsAuthorization ? "ETS" : "USB", etsTableValid ? "valid" : "INVALID", unsigned(activeMappings().size()));
     }
-    enabled = ParamHK_Enabled && !fatal;
+    enabled = ParamHK_Enabled && !fatal && store.healthy;
     allowUid = ParamHK_AllowUid;
     pairingPermitted = ParamHK_PairingPermitted;
     if (enabled && !started)
@@ -76,16 +80,18 @@ void HomeKeyModule::loop()
             logErrorP("Home Key task creation failed; reboot required");
         }
     }
-    // Start the NFC worker after HAP's storage/crypto initialization releases
-    // its temporary allocations; the reader cannot do useful work before then.
-    if (enabled && provisioningReady && !readerHandle)
+    // Ordinary UID operation is independent of HAP/HomeKey. In combined mode
+    // wait for HAP initialization to avoid overlapping crypto allocation peaks.
+    if (readerEnabled && (!enabled || provisioningReady) && !readerHandle)
     {
         if (xTaskCreate([](void* self) { static_cast<HomeKeyModule*>(self)->readerTask(); },
             "HomeKeyNfc", OPENKNX_HOMEKEY_NFC_STACK_SIZE, this, 1, &readerHandle) != pdPASS)
         {
             fatal = true;
             enabled = false;
-            logErrorP("Home Key NFC task creation failed; reboot required");
+            readerFatal = true;
+            readerEnabled = false;
+            logErrorP("NFC reader task creation failed; reboot required");
         }
     }
     if (!enabled || !pairingPermitted)
@@ -102,10 +108,14 @@ void HomeKeyModule::loop()
     // Bound work per iteration. Never write KNX objects from either worker task.
     for (unsigned i = 0; i < 4 && xQueueReceive(events, &event, 0) == pdTRUE; ++i)
     {
-        if (!enabled) continue;
+        if (!readerEnabled) continue;
         if (event.kind == EventKind::ReaderReady)
         {
-            logInfoP("NFC reader initialized; RF discovery active");
+#ifdef OPENKNX_NFC_ST25R3916_I2C
+            logInfoP("ST25R3916 I2C initialized; RF discovery active");
+#else
+            logInfoP("PN7161 initialized; RF discovery active");
+#endif
             continue;
         }
         if (event.kind == EventKind::ReaderFailed)
@@ -126,9 +136,9 @@ void HomeKeyModule::loop()
         }
         bool granted = false;
         const char* reason = event.reason;
-        if (store.healthy && event.generation == store.generation)
+        if (event.generation == store.generation)
         {
-            if (event.kind == EventKind::Authenticated && store.contains(event.issuer, event.endpoint))
+            if (enabled && store.healthy && event.kind == EventKind::Authenticated && store.contains(event.issuer, event.endpoint))
             {
                 auto id = lookupAccessId(event.issuer, event.endpoint);
                 granted = id != HomeKey::InvalidId && openknxAccessControl.processHomeKeyCredential(id);
@@ -155,7 +165,8 @@ void HomeKeyModule::loop()
                 reason = "UID credential not authorized";
             }
             else if (event.kind == EventKind::Authenticated)
-                reason = "authenticated endpoint missing from credential store";
+                reason = !enabled ? "HomeKey disabled; no credential authorized"
+                    : "authenticated endpoint missing from credential store";
         }
         else reason = !store.healthy ? "credential storage unavailable" : "credential/policy changed during scan; retry";
         if (!granted)
@@ -169,7 +180,7 @@ void HomeKeyModule::loop()
 
 void HomeKeyModule::enqueue(const Event& event)
 {
-    if (enabled && events)
+    if (readerEnabled && events)
         xQueueSend(events, &event, 0); // Overflow drops the event, never grants access.
 }
 
@@ -180,32 +191,36 @@ bool HomeKeyModule::pairingAllowed() const
 
 void HomeKeyModule::readerTask()
 {
-#ifdef HOMEKEY_READER_I2C
+#ifdef OPENKNX_NFC_ST25R3916_I2C
+    reader = std::make_unique<St25r3916Reader>(OPENKNX_GPIO_WIRE, OPENKNX_GPIO_SDA, OPENKNX_GPIO_SCL,
+        ecp, OPENKNX_ST25R3916_I2C_ADDRESS, OPENKNX_GPIO_CLOCK);
+#elif defined(HOMEKEY_READER_I2C)
     reader = std::make_unique<Pn7160Reader>(std::array<uint8_t, 4>{}, HOMEKEY_IRQ_PIN, HOMEKEY_VEN_PIN, ecp);
 #else
     reader = std::make_unique<Pn7160Reader>(std::array<uint8_t, 4>{HOMEKEY_SPI_CS, HOMEKEY_SPI_SCLK, HOMEKEY_SPI_MISO, HOMEKEY_SPI_MOSI}, HOMEKEY_IRQ_PIN, HOMEKEY_VEN_PIN, ecp);
 #endif
     bool connected = false;
     uint32_t appliedGeneration = UINT32_MAX;
+    bool appliedEcpActive = false;
     for (;;)
     {
-        if (!enabled || !provisioningReady)
+        if (!readerEnabled || (enabled && !provisioningReady))
         {
             if (connected) reader->stop();
             connected = false;
             vTaskDelay(pdMS_TO_TICKS(100));
             continue;
         }
-        bool healthy;
+        bool ecpActive;
         uint32_t generation;
         {
             std::lock_guard<std::recursive_mutex> guard(store.mutex);
-            healthy = store.healthy;
+            ecpActive = enabled && provisioningReady && store.healthy && store.identity.group_identifier.size() == 8;
             generation = store.generation;
-            if (generation != appliedGeneration)
+            if (generation != appliedGeneration || ecpActive != appliedEcpActive)
             {
                 ecp.fill(0);
-                if (store.identity.group_identifier.size() == 8)
+                if (ecpActive)
                 {
                     const uint8_t head[8] = {0x6a, 2, 0xcb, 2, 6, 2, 0x11, 0};
                     std::copy(head, head + 8, ecp.begin());
@@ -222,7 +237,6 @@ void HomeKeyModule::readerTask()
                 }
             }
         }
-        if (!healthy) { if (connected) reader->stop(); connected = false; vTaskDelay(pdMS_TO_TICKS(500)); continue; }
         if (!connected)
         {
             connected = reader->init() && reader->beginDiscovery();
@@ -231,11 +245,13 @@ void HomeKeyModule::readerTask()
             enqueue(diagnostic);
             if (!connected) { reader->stop(); vTaskDelay(pdMS_TO_TICKS(5000)); continue; }
             appliedGeneration = generation;
+            appliedEcpActive = ecpActive;
         }
-        else if (generation != appliedGeneration)
+        else if (generation != appliedGeneration || ecpActive != appliedEcpActive)
         {
             if (!reader->updateECP()) { reader->stop(); connected = false; continue; }
             appliedGeneration = generation;
+            appliedEcpActive = ecpActive;
         }
         std::vector<uint8_t> uid;
         std::array<uint8_t, 2> atqa{};
@@ -246,7 +262,11 @@ void HomeKeyModule::readerTask()
             diagnostic.kind = EventKind::TagDetected;
             enqueue(diagnostic);
             handleTag(uid, sak);
-            while (enabled && reader->isTagStillPresent()) vTaskDelay(pdMS_TO_TICKS(100));
+            const TickType_t detectedAt = xTaskGetTickCount();
+            const bool homeKeyAtScan = enabled;
+            while (readerEnabled && enabled == homeKeyAtScan && reader->isTagStillPresent() &&
+                   (xTaskGetTickCount() - detectedAt) < pdMS_TO_TICKS(10000))
+                vTaskDelay(pdMS_TO_TICKS(100));
             reader->releaseTag();
         }
         if (!reader->healthCheck()) { reader->stop(); connected = false; }

@@ -25,8 +25,8 @@ class HomeKeyModule : public OpenKNX::Module
     void setup() override;
     void loop() override;
     void processInputKo(GroupObject&) override;
-    void processBeforeTablesUnload() override { enabled = false; policyLoaded = false; webCodeAllowed = false; cancelCommissioning(); }
-    void processBeforeRestart() override { enabled = false; webCodeAllowed = false; cancelCommissioning(); }
+    void processBeforeTablesUnload() override { readerEnabled = false; enabled = false; policyLoaded = false; webCodeAllowed = false; cancelCommissioning(); }
+    void processBeforeRestart() override { readerEnabled = false; enabled = false; webCodeAllowed = false; cancelCommissioning(); }
     bool processCommand(const std::string cmd, bool diagnoseKo) override;
     void showHelp() override;
     bool pairingAllowed() const;
@@ -92,6 +92,8 @@ class HomeKeyModule : public OpenKNX::Module
     std::unique_ptr<INfcReader> reader;
     std::unique_ptr<HomeKeyProvisioning> provisioning;
     QueueHandle_t events = nullptr;
+    std::atomic<bool> readerEnabled{false};
+    bool readerFatal = false;
     std::atomic<bool> enabled{false};
     std::atomic<bool> allowUid{false};
     std::atomic<bool> pairingPermitted{false};

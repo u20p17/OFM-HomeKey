@@ -2,6 +2,7 @@
 #if defined(OPENKNX_HOMEKEY_ENABLED) && defined(ARDUINO_ARCH_ESP32)
 #include "OpenKNX.h"
 #include "CredentialStore.h"
+#include "HomeKeyPolicy.h"
 #include "NfcReaderService.h"
 #include <atomic>
 #include <memory>
@@ -61,6 +62,18 @@ class HomeKeyModule : public OpenKNX::Module, public NfcReaderExtension
     void showMemory();
     void authenticate(INfcReader&, const std::vector<uint8_t>& selectResponse);
     void enqueue(const Event&);
+    struct NfcDiagnostic
+    {
+        std::array<uint8_t, 64> response{};
+        std::array<uint8_t, 14> version{};
+        HomeKey::CardVersionDiagnostic versionDiagnostic{};
+        size_t responseLength = 0;
+        uint16_t status = 0;
+        bool exchanged = false;
+        bool versionAttempted = false;
+        bool versionValid = false;
+    };
+    QueueHandle_t diagnostics = nullptr;
     void cancelCommissioning() { ++commissioningEpoch; pairingUntil = 0; }
     const std::vector<HomeKey::Mapping>& activeMappings() const { return etsAuthorization ? etsMappings : store.mappings; }
     uint16_t lookupAccessId(const HomeKey::IssuerId& issuer, const HomeKey::EndpointId& endpoint) const

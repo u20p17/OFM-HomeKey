@@ -90,6 +90,65 @@ namespace HomeKey
 
     // A failed or malformed SELECT never becomes a conventional UID grant.
     enum class Selection { HomeKey, OrdinaryTag, Denied };
+    struct CardVersionDiagnostic
+    {
+        struct Stage
+        {
+            size_t responseLength = 0;
+            uint16_t status = 0;
+            bool exchanged = false;
+            uint16_t lengthCorrection = 0;
+        };
+        std::array<Stage, 4> stages{};
+        size_t attempted = 0;
+    };
+    template<typename Exchange> bool readCardVersion(Exchange exchange, std::array<uint8_t, 14>& version,
+                                                    CardVersionDiagnostic* diagnostic = nullptr)
+    {
+        version.fill(0);
+        if (diagnostic) *diagnostic = {};
+        std::vector<uint8_t> response;
+        std::array<uint8_t, 14> parsed{};
+        for (size_t stage = 0; stage < 4; ++stage)
+        {
+            response.clear();
+            auto command = stage == 0
+                ? std::vector<uint8_t>{0x00, 0xa4, 0x04, 0x00, 7, 0xd2, 0x76, 0x00, 0x00, 0x85, 0x01, 0x00}
+                : std::vector<uint8_t>{0x90, uint8_t(stage == 1 ? 0x60 : 0xaf), 0, 0, 0};
+            bool exchanged = exchange(command, response);
+            uint16_t status = response.size() >= 2
+                ? (uint16_t(response[response.size() - 2]) << 8) | response.back() : 0;
+            uint16_t lengthCorrection = 0;
+            if (stage == 0 && exchanged && response.size() == 2 && (status & 0xff00) == 0x6c00)
+            {
+                lengthCorrection = status;
+                command.push_back(uint8_t(status));
+                response.clear();
+                exchanged = exchange(command, response);
+                status = response.size() >= 2
+                    ? (uint16_t(response[response.size() - 2]) << 8) | response.back() : 0;
+            }
+            if (diagnostic)
+            {
+                diagnostic->attempted = stage + 1;
+                diagnostic->stages[stage] = {response.size(), status, exchanged, lengthCorrection};
+            }
+            const size_t expectedLength = stage == 0 ? 2 : stage == 3 ? 16 : 9;
+            const uint16_t expectedStatus = stage == 0 ? 0x9000 : stage == 3 ? 0x9100 : 0x91af;
+            const bool validLength = stage == 0 ? response.size() >= expectedLength : response.size() == expectedLength;
+            if (!exchanged || !validLength || status != expectedStatus)
+            {
+                response.clear();
+                return false;
+            }
+            if (stage == 1 || stage == 2)
+                for (size_t index = 0; index < 7; ++index)
+                    parsed[(stage - 1) * 7 + index] = response[index];
+            response.clear();
+        }
+        version = parsed;
+        return true;
+    }
     inline Selection classify(bool isoDep, bool exchanged, const std::vector<uint8_t>& response)
     {
         if (!isoDep)
@@ -98,7 +157,12 @@ namespace HomeKey
             return Selection::Denied;
         uint16_t sw = (response[response.size() - 2] << 8) | response.back();
         if (sw == 0x9000)
+        {
+            if (response.size() == 38 && response[0] == 0x6f && response[1] == 0x22 &&
+                response[2] == 0x85 && response[3] == 0x20)
+                return Selection::OrdinaryTag;
             return Selection::HomeKey;
+        }
         return sw == 0x6a82 ? Selection::OrdinaryTag : Selection::Denied;
     }
     inline uint16_t lookup(const std::vector<Mapping>& mappings, const IssuerId& issuer, const EndpointId& endpoint)

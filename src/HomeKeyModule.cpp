@@ -33,6 +33,8 @@ void HomeKeyModule::setup()
     }
     events = xQueueCreate(4, sizeof(Event));
     if (!events) { fatal = true; logErrorP("Home Key event queue unavailable"); return; }
+    diagnostics = xQueueCreate(1, sizeof(NfcDiagnostic));
+    if (!diagnostics) logErrorP("NFC diagnostic queue unavailable; diagnostics disabled");
     provisioning = std::make_unique<HomeKeyProvisioning>(*this);
 #ifdef OPENKNX_HOMEKEY_WEB
     setupWeb();
@@ -87,6 +89,44 @@ void HomeKeyModule::loop()
     uint32_t deadline = pairingUntil.load();
     if (deadline && !HomeKey::windowOpen(millis(), deadline)) cancelCommissioning();
     updateStatus();
+    NfcDiagnostic diagnostic;
+    if (diagnostics && xQueueReceive(diagnostics, &diagnostic, 0) == pdTRUE)
+    {
+        const size_t count = std::min(diagnostic.responseLength, diagnostic.response.size());
+        logInfoP("Home Key SELECT: exchange=%s, response length=%u, status=%04X, dump=%u bytes",
+            diagnostic.exchanged ? "OK" : "failed", unsigned(diagnostic.responseLength), unsigned(diagnostic.status), unsigned(count));
+        char dump[64 * 3 + 1]{};
+        constexpr char digits[] = "0123456789ABCDEF";
+        for (size_t index = 0; index < count; ++index)
+        {
+            dump[index * 3] = digits[diagnostic.response[index] >> 4];
+            dump[index * 3 + 1] = digits[diagnostic.response[index] & 15];
+            dump[index * 3 + 2] = ' ';
+        }
+        logInfoP("%s", dump);
+        if (diagnostic.versionAttempted)
+        {
+            constexpr const char* stages[] = {"master SELECT", "hardware", "software", "completion"};
+            for (size_t index = 0; index < diagnostic.versionDiagnostic.attempted; ++index)
+            {
+                const auto& stage = diagnostic.versionDiagnostic.stages[index];
+                if (stage.lengthCorrection)
+                    logInfoP("Card GetVersion: stage=%s, length correction=%04X, retry Le=%02X",
+                        stages[index], unsigned(stage.lengthCorrection), unsigned(stage.lengthCorrection & 0xff));
+                logInfoP("Card GetVersion: stage=%s, exchange=%s, response length=%u, status=%04X",
+                    stages[index], stage.exchanged ? "OK" : "failed", unsigned(stage.responseLength), unsigned(stage.status));
+            }
+            if (diagnostic.versionValid)
+            {
+                const auto& version = diagnostic.version;
+                logInfoP("Card GetVersion: %s; HW=%s SW=%s",
+                    version[0] == 4 && version[1] == 1 && version[7] == 4 && version[8] == 1 ? "NXP DESFire-family" : "unidentified family",
+                    hex(std::array<uint8_t,7>{version[0], version[1], version[2], version[3], version[4], version[5], version[6]}).c_str(),
+                    hex(std::array<uint8_t,7>{version[7], version[8], version[9], version[10], version[11], version[12], version[13]}).c_str());
+            }
+            else logInfoP("Card GetVersion: unsupported, malformed or timed out; UID policy unchanged");
+        }
+    }
     Event event;
     // Bound work per iteration. Never write KNX objects from either worker task.
     for (unsigned i = 0; i < 4 && xQueueReceive(events, &event, 0) == pdTRUE; ++i)

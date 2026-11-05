@@ -146,6 +146,32 @@ Home Key permission. Different slots may select the same action, for example
 `Konventionelle UID-Tags zulassen` when using ordinary tags with the external
 reader.
 
+The reader recognizes a complete proprietary SELECT FCI response of the form
+`6F 22 85 20 <32 bytes> 90 00` as a conventional UID tag before starting
+Home Key authentication. Other successful SELECT responses still undergo
+Home Key validation; failed Home Key authentication never falls back to UID.
+UID access requires the conventional-tag setting and an enrolled, permitted
+slot. It does not authenticate the card's cryptographic application.
+
+For this FCI response, a read-only probe first selects the DESFire master
+application using `00 A4 04 00 07 D2 76 00 00 85 01 00`. It then completes
+the selection with one corrected-length retry if the card returns `6Cxx`,
+appending `xx` as Le (`00` requests up to 256 bytes). It completes
+GetVersion with `90 60 00 00 00` and two `90 AF 00 00 00` commands. Hardware
+and software replies must each contain seven bytes followed by `91 AF`;
+the final reply must contain fourteen bytes followed by `91 00`. The final
+UID/production payload is discarded and is not retained in diagnostics or
+logged. The probe stops at the first failed stage, with at most five
+exchanges and a 300 ms timeout per exchange. Unsupported commands, malformed
+replies and timeouts do not change classification or authorization.
+Diagnostics report each attempted stage's exchange result, response length
+and status, together with hardware/software fields after full completion.
+They identify the NXP DESFire family only when both
+frames contain its manufacturer/type identifiers. No exact chip generation
+is inferred from ATQA/SAK alone. SELECT diagnostics are queued separately
+from authorization events and logged in the main loop, with at most 64
+response bytes emitted together in one entry.
+
 The NFC table's **Info holen** button reads the conventional UID tag stored in
 the selected slot. For active Home Key rows it instead shows the description
 from the current ETS project, checks the reader's provisioned endpoint list and

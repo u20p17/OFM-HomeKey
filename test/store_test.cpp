@@ -86,6 +86,110 @@ int main()
     assert(classify(true, true, {0x90}) == Selection::Denied);
     assert(classify(true, true, {}) == Selection::Denied);
 
+    std::vector<uint8_t> companyFci(38, 0x5c);
+    companyFci[0] = 0x6f; companyFci[1] = 0x22;
+    companyFci[2] = 0x85; companyFci[3] = 0x20;
+    companyFci[36] = 0x90; companyFci[37] = 0;
+    assert(classify(true, true, companyFci) == Selection::OrdinaryTag);
+    assert(classify(true, false, companyFci) == Selection::Denied);
+    companyFci[37] = 0x01;
+    assert(classify(true, true, companyFci) == Selection::Denied);
+    companyFci[37] = 0;
+    companyFci[1] = 0x21;
+    assert(classify(true, true, companyFci) == Selection::HomeKey);
+    companyFci[1] = 0x22; companyFci[3] = 0x1f;
+    assert(classify(true, true, companyFci) == Selection::HomeKey);
+    companyFci[3] = 0x20; companyFci.erase(companyFci.begin() + 4);
+    assert(classify(true, true, companyFci) == Selection::HomeKey);
+    assert(classify(true, true, {0x5c, 2, 2, 0, 0x90, 0}) == Selection::HomeKey);
+
+    std::array<uint8_t, 14> cardVersion{};
+    unsigned versionCalls = 0;
+    CardVersionDiagnostic versionDiagnostic;
+    auto versionReply = [](unsigned stage) {
+        if (stage == 0) return std::vector<uint8_t>{0x90, 0};
+        if (stage == 3) {
+            std::vector<uint8_t> reply(16, 0xaa);
+            reply[14] = 0x91; reply[15] = 0;
+            return reply;
+        }
+        return std::vector<uint8_t>{4, 1, 1, 0x33, 0, 0x18, 5, 0x91, 0xaf};
+    };
+    assert(readCardVersion([&](const std::vector<uint8_t>& command, std::vector<uint8_t>& reply) {
+        if (versionCalls == 0)
+            assert(command == (std::vector<uint8_t>{0x00, 0xa4, 0x04, 0x00, 7, 0xd2, 0x76, 0, 0, 0x85, 1, 0}));
+        else
+            assert(command == (std::vector<uint8_t>{0x90, uint8_t(versionCalls == 1 ? 0x60 : 0xaf), 0, 0, 0}));
+        reply = versionReply(versionCalls++);
+        return true;
+    }, cardVersion, &versionDiagnostic));
+    assert(versionCalls == 4 && cardVersion[0] == 4 && cardVersion[10] == 0x33);
+    assert(versionDiagnostic.attempted == 4 && versionDiagnostic.stages[3].responseLength == 16);
+    assert(versionDiagnostic.stages[3].status == 0x9100 && versionDiagnostic.stages[3].exchanged);
+    versionCalls = 0;
+    assert(readCardVersion([&](const std::vector<uint8_t>&, std::vector<uint8_t>& reply) {
+        reply = versionReply(versionCalls);
+        if (versionCalls++ == 0) reply.insert(reply.begin(), {0x6f, 0});
+        return true;
+    }, cardVersion, &versionDiagnostic));
+    assert(versionCalls == 4 && versionDiagnostic.stages[0].responseLength == 4);
+    for (uint8_t correctedLength : {uint8_t(0), uint8_t(0x10)})
+    {
+        versionCalls = 0;
+        assert(readCardVersion([&](const std::vector<uint8_t>& command, std::vector<uint8_t>& reply) {
+            const unsigned call = versionCalls++;
+            if (call == 0) reply = {0x6c, correctedLength};
+            else {
+                if (call == 1)
+                    assert(command == (std::vector<uint8_t>{0, 0xa4, 4, 0, 7, 0xd2, 0x76, 0, 0, 0x85, 1, 0, correctedLength}));
+                else
+                    assert(command == (std::vector<uint8_t>{0x90, uint8_t(call == 2 ? 0x60 : 0xaf), 0, 0, 0}));
+                reply = versionReply(call - 1);
+            }
+            return true;
+        }, cardVersion, &versionDiagnostic));
+        assert(versionCalls == 5 && versionDiagnostic.attempted == 4);
+        assert(versionDiagnostic.stages[0].lengthCorrection == (0x6c00 | correctedLength));
+        assert(versionDiagnostic.stages[0].status == 0x9000);
+    }
+    for (unsigned failure = 0; failure < 3; ++failure)
+    {
+        versionCalls = 0;
+        assert(!readCardVersion([&](const std::vector<uint8_t>&, std::vector<uint8_t>& reply) {
+            const unsigned call = versionCalls++;
+            reply = call == 0 || failure == 1 ? std::vector<uint8_t>{0x6c, 0} : std::vector<uint8_t>{0x90};
+            return !(call == 1 && failure == 0);
+        }, cardVersion, &versionDiagnostic));
+        assert(versionCalls == 2 && versionDiagnostic.attempted == 1);
+        assert(versionDiagnostic.stages[0].lengthCorrection == 0x6c00);
+        assert(versionDiagnostic.stages[0].exchanged == (failure != 0));
+        assert(cardVersion == (std::array<uint8_t, 14>{}));
+    }
+    for (unsigned failureFrame = 0; failureFrame < 4; ++failureFrame)
+    {
+        for (unsigned failure = 0; failure < 6; ++failure)
+        {
+            if (failureFrame == 0 && failure == 5) continue;
+            versionCalls = 0;
+            assert(!readCardVersion([&](const std::vector<uint8_t>&, std::vector<uint8_t>& reply) {
+                const bool fail = versionCalls == failureFrame;
+                reply = versionReply(versionCalls++);
+                if (fail && failure == 1) reply.pop_back();
+                if (fail && failure == 2) reply[reply.size() - 2] ^= 1;
+                if (fail && failure == 3) reply.back() ^= 1;
+                if (fail && failure == 4) reply.clear();
+                if (fail && failure == 5) reply.insert(reply.begin(), 0);
+                return !(fail && failure == 0);
+            }, cardVersion, &versionDiagnostic));
+            assert(versionCalls == failureFrame + 1);
+            assert(versionDiagnostic.attempted == versionCalls);
+            assert(versionDiagnostic.stages[failureFrame].exchanged == (failure != 0));
+            for (unsigned stage = failureFrame + 1; stage < 4; ++stage)
+                assert(!versionDiagnostic.stages[stage].exchanged && versionDiagnostic.stages[stage].responseLength == 0);
+            assert(cardVersion == (std::array<uint8_t, 14>{}));
+        }
+    }
+
     HomeKeyCredentialStore store;
     assert(store.begin() && store.healthy);
     store.identity.private_key.assign(32, 1);

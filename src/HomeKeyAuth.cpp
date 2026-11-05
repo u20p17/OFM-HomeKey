@@ -12,6 +12,21 @@ bool HomeKeyModule::processNfcTag(INfcReader& reader, const std::vector<uint8_t>
     const bool exchanged=isoDep && reader.exchangeApdu(
         {0x00,0xa4,0x04,0x00,7,0xa0,0,0,8,0x58,1,1,0},response,1000);
     const auto selection=HomeKey::classify(isoDep,exchanged,response);
+    if (isoDep && diagnostics) {
+        NfcDiagnostic diagnostic;
+        diagnostic.exchanged = exchanged;
+        diagnostic.responseLength = response.size();
+        if (response.size() >= 2)
+            diagnostic.status = (uint16_t(response[response.size()-2]) << 8) | response.back();
+        std::copy_n(response.begin(), std::min(response.size(), diagnostic.response.size()), diagnostic.response.begin());
+        if (selection == HomeKey::Selection::OrdinaryTag && diagnostic.status == 0x9000) {
+            diagnostic.versionAttempted = true;
+            diagnostic.versionValid = HomeKey::readCardVersion([&reader](const std::vector<uint8_t>& command, std::vector<uint8_t>& reply) {
+                return reader.exchangeApdu(command, reply, 300);
+            }, diagnostic.version, &diagnostic.versionDiagnostic);
+        }
+        xQueueOverwrite(diagnostics, &diagnostic);
+    }
     if (selection==HomeKey::Selection::OrdinaryTag) return false;
     if (selection==HomeKey::Selection::HomeKey) {
         authenticate(reader,response);

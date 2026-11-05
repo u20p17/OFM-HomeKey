@@ -438,45 +438,30 @@ active permission is missing, distinguish invalid/empty ETS tables and use the
 NFC-Tag-ID terminology. ID 0 is valid independently of action configuration.
 
 
-### Elechouse ST25R3916 I2C backend
+### Reader ownership and optional HomeKey extension
 
-Build with `OPENKNX_NFC_ST25R3916_I2C` (the application provides REG1 and XIAO
-ST25R3916 profiles). The adapter defaults to address **0x50**, configurable with
-`OPENKNX_ST25R3916_I2C_ADDRESS`, and uses hardware I2C at **400 kHz**. It borrows
-the OpenKNX/TwoWire bus and releases only its own device handle. This port polls
-the chip's interrupt registers, so no physical IRQ, VEN or DWL wiring is needed.
-Use the Elechouse module's documented 5 V supply input and board-compatible I2C
-logic levels. The implementation targets ST25R3916, not an unverified B variant.
+OFM-AccessControl owns `NfcReaderService`: its worker, bounded event queue,
+reader factory, retries, removal/presence handling and UID delivery to the
+existing enrollment/storage/action path. `NfcReader.hpp` and the PN7161/ST25
+adapters are also in OFM-AccessControl. Ordinary NFC requires no HomeKey module.
 
-The adapter is based on rednblkx/HomeKey-ESP32 revision
-`f167cba1950aa9e37afb9cb06163a78299599a67`; its MIT notice is retained in
-`../ST25R3916/LICENSE` in the standalone driver checkout. It implements NFC-A UID cascades (4/7/10 bytes),
-RATS/ATS, ISO-DEP command/response chaining, CRC handling, bounded retransmission
-and WTX, and presence/release. ECP uses the complete 18-byte buffer with hardware
-CRC generation off. All-zero ECP buffers are not transmitted. APDUs and assembled
-responses are bounded to 4096 bytes; the caller's exchange budget is capped at
-10 seconds, failed output is cleared, and shared-bus shutdown is avoided.
+The standalone PN7161 library owns `Pn7161Reader` and `Pn7161I2cTransport`.
+The standalone ST25R3916 library owns its I2C/ISO-DEP driver. Both take explicit
+bus/pin configuration and optional copied ECP bytes; neither depends on OpenKNX,
+HomeKey, HomeSpan, ETS or credentials. Their upstream MIT notices are retained.
 
-The NFC worker now operates independently of the HomeKey enable switch. Select
-an NFC scanner in ETS and leave `Konventionelle UID-Tags zulassen` enabled for
-ordinary-tag operation with HomeKey off. This does not start HomeSpan/HAP. HomeKey
-storage failure disables HomeKey but does not disable the ordinary UID path.
-When HomeKey is enabled, the same worker uses the existing DigitalDoorKey
-profiles, permission table, reserved tag IDs and KNX action mapping. Failed
-HomeKey selection/authentication never falls back to a UID grant. Queued
-credentials are checked again after mode/policy changes. Both PN7161 and ST25R3916
-stop advertising ECP when HomeKey is disabled or no group ID is provisioned.
+OFM-HomeKey implements the optional `NfcReaderExtension` hooks: HAP startup
+readiness, ECP frame generation, HomeKey SELECT/authentication and UID policy
+checks/reserved IDs. Authenticated results remain on a separate bounded queue
+and are authorized on the main KNX thread after generation/policy checks.
+A consumed or failed HomeKey transaction never falls back to ordinary UID.
+No NFC worker or hardware driver is owned by this module.
 
-The worker is still packaged inside OFM-HomeKey; moving its API into a separate
-neutral reader service remains a later cleanup. These profiles therefore still
-compile the HomeKey module even for UID-only operation. Radio operation has no
-HAP readiness dependency in that mode; KNX IP output still needs its network.
-Hardware authentication/range tests on the Elechouse board remain required.
-
-
-The chip/ISO-DEP driver and its host tests now live in the separate private
-`u20p17/ST25R3916` repository (local `../ST25R3916`, linked by the application's
-`lib/ST25R3916`). `src/St25r3916Reader.hpp` is only the `INfcReader` adapter;
-it copies this module's current ECP advertisement into the generic driver.
-The driver owns no HomeKey identity, credential, ETS policy or HomeSpan logic.
-Its upstream MIT notice is retained in that repository's LICENSE.
+Combined profiles keep the existing pairing, web UI and KNX behavior. With
+HomeKey off, the worker reads enrolled UID tags without SELECT/HAP/ECP.
+The separate UID-only profiles `debug_REG1_ESP_PN7161_NFC_IP` and
+`debug_REG1_ESP_ST25R3916_NFC_IP` exclude OFM-HomeKey, HomeSpan and DigitalDoorKey
+entirely. Set HomeKey to Nein in ETS for those images; an enabled HomeKey policy
+is rejected rather than silently treated as ordinary UID authorization.
+The UID-only IP profiles reuse stored or build-configured Wi-Fi credentials.
+Physical PN7161/Elechouse and iPhone/Watch tests remain required.

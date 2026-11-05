@@ -1,10 +1,12 @@
 ### Konventionelle UID-Tags zulassen
 
-Hier können neben Apple Home Key auch herkömmliche NFC-Tags über ihre UID verwendet werden.
+Ohne Apple Home Key ist die UID-Auswertung bei ausgewähltem NFC-Scanner immer aktiv. Ein früher gespeicherter Nein-Wert dieses Parameters blockiert die normale NFC-Verwendung nicht. Auch ISO-DEP-Karten werden in diesem Modus ausschließlich über ihre UID ausgewertet, ohne HomeKey-SELECT oder Authentifizierung.
 
-* **Nein**: Herkömmliche UID-Tags werden nicht für den Zutritt verwendet.
-* **Ja** (Standard): Bekannte UID-Tags werden über die bestehenden NFC-Zuordnungen ausgewertet.
+Bei aktiviertem Apple Home Key kann die UID-Verwendung zusätzlich gesteuert werden:
 
-Die UID eines herkömmlichen Tags ist kein kryptografischer Identitätsnachweis. Verwenden Sie diese Freigabe nur, wenn solche Tags ausdrücklich benötigt werden. Ein fehlgeschlagener Home-Key-Authentifizierungsversuch wird nicht als UID-Zutritt behandelt.
+* **Ja** (Standard): Bekannte UID-Tags werden zusätzlich über die bestehenden NFC-Zuordnungen ausgewertet.
+* **Nein**: Nur HomeKey-Authentifizierung; herkömmliche UID-Tags werden nicht für Zutritt oder Anlernen verwendet.
 
-NFC-Tag-IDs, die für Home-Key-Berechtigungen verwendet werden, stehen nicht gleichzeitig für UID-Tags zur Verfügung.
+Die Freigabe erlaubt keine unbekannten Tags: Die UID muss gespeichert sein und eine passende NFC-Aktion besitzen. Eine UID ist kein kryptografischer Identitätsnachweis. Ein fehlgeschlagener HomeKey-Authentifizierungsversuch wird im HomeKey-Modus niemals als UID-Zutritt behandelt. Auch ein Speicher- oder Initialisierungsfehler hebt die konfigurierte UID-Sperre nicht auf.
+
+NFC-Tag-IDs, die für HomeKey-Berechtigungen verwendet werden, stehen nicht gleichzeitig für UID-Tags zur Verfügung.

@@ -3,10 +3,6 @@
 #include "HomeKeyProvisioning.h"
 #include "HomeKeyOnline.h"
 #include "HomeKeyWifi.h"
-#include "Pn7160Reader.hpp"
-#ifdef OPENKNX_NFC_ST25R3916_I2C
-#include "St25r3916Reader.hpp"
-#endif
 #include "AccessControl.h"
 #include <algorithm>
 #include <sstream>
@@ -29,6 +25,7 @@ HomeKeyModule openknxHomeKey;
 
 void HomeKeyModule::setup()
 {
+    openknxNfc.attach(this); // The NFC worker is owned by AccessControl, not HomeKey.
     if (sodium_init() < 0 || !store.begin())
     {
         logErrorP("Home Key storage/crypto unavailable; access disabled");
@@ -45,9 +42,10 @@ void HomeKeyModule::setup()
 
 void HomeKeyModule::loop()
 {
-    if (!knx.configured()) { readerEnabled = false; enabled = false; policyLoaded = false; webCodeAllowed = false; cancelCommissioning(); return; }
-    readerEnabled = ParamACC_NfcScanner != 0 && !readerFatal;
-    if (!events) { readerEnabled = false; enabled = false; webCodeAllowed = false; cancelCommissioning(); updateStatus(); return; }
+    if (!knx.configured()) { homeKeyConfigured = false; enabled = false; policyLoaded = false; webCodeAllowed = false; cancelCommissioning(); return; }
+    homeKeyConfigured = ParamHK_Enabled;
+    allowUid = !homeKeyConfigured || ParamHK_AllowUid;
+    if (!events) { enabled = false; webCodeAllowed = false; cancelCommissioning(); updateStatus(); return; }
     if (!policyLoaded)
     {
         std::unique_lock<std::recursive_mutex> guard(store.mutex, std::try_to_lock);
@@ -62,8 +60,7 @@ void HomeKeyModule::loop()
         logInfoP("Authorization source: %s; table %s; %u active mapping(s)",
             etsAuthorization ? "ETS" : "USB", etsTableValid ? "valid" : "INVALID", unsigned(activeMappings().size()));
     }
-    enabled = ParamHK_Enabled && !fatal && store.healthy;
-    allowUid = ParamHK_AllowUid;
+    enabled = homeKeyConfigured && !fatal && store.healthy;
     pairingPermitted = ParamHK_PairingPermitted;
     if (enabled && !started)
     {
@@ -80,20 +77,6 @@ void HomeKeyModule::loop()
             logErrorP("Home Key task creation failed; reboot required");
         }
     }
-    // Ordinary UID operation is independent of HAP/HomeKey. In combined mode
-    // wait for HAP initialization to avoid overlapping crypto allocation peaks.
-    if (readerEnabled && (!enabled || provisioningReady) && !readerHandle)
-    {
-        if (xTaskCreate([](void* self) { static_cast<HomeKeyModule*>(self)->readerTask(); },
-            "HomeKeyNfc", OPENKNX_HOMEKEY_NFC_STACK_SIZE, this, 1, &readerHandle) != pdPASS)
-        {
-            fatal = true;
-            enabled = false;
-            readerFatal = true;
-            readerEnabled = false;
-            logErrorP("NFC reader task creation failed; reboot required");
-        }
-    }
     if (!enabled || !pairingPermitted)
         cancelCommissioning();
 #ifdef OPENKNX_HOMEKEY_WEB
@@ -108,26 +91,7 @@ void HomeKeyModule::loop()
     // Bound work per iteration. Never write KNX objects from either worker task.
     for (unsigned i = 0; i < 4 && xQueueReceive(events, &event, 0) == pdTRUE; ++i)
     {
-        if (!readerEnabled) continue;
-        if (event.kind == EventKind::ReaderReady)
-        {
-#ifdef OPENKNX_NFC_ST25R3916_I2C
-            logInfoP("ST25R3916 I2C initialized; RF discovery active");
-#else
-            logInfoP("PN7161 initialized; RF discovery active");
-#endif
-            continue;
-        }
-        if (event.kind == EventKind::ReaderFailed)
-        {
-            logWarningP("NFC reader initialization/discovery failed; retrying in 5 seconds");
-            continue;
-        }
-        if (event.kind == EventKind::TagDetected)
-        {
-            logInfoP("NFC tag detected; checking credential");
-            continue;
-        }
+        if (!openknxNfc.active()) continue;
         std::unique_lock<std::recursive_mutex> guard(store.mutex, std::try_to_lock);
         if (!guard.owns_lock())
         {
@@ -156,14 +120,6 @@ void HomeKeyModule::loop()
                     if (granted) logInfoP("Home Key credential accepted: NFC-Tag-ID=%u", id);
                 }
             }
-            else if (event.kind == EventKind::Uid && allowUid)
-            {
-                uint16_t reserved[HomeKey::MaxMappings];
-                size_t count = 0;
-                for (const auto& mapping : activeMappings()) reserved[count++] = mapping.accessId;
-                granted = openknxAccessControl.processExternalNfcUid(event.uid, event.uidLength, reserved, count);
-                reason = "UID credential not authorized";
-            }
             else if (event.kind == EventKind::Authenticated)
                 reason = !enabled ? "HomeKey disabled; no credential authorized"
                     : "authenticated endpoint missing from credential store";
@@ -180,7 +136,7 @@ void HomeKeyModule::loop()
 
 void HomeKeyModule::enqueue(const Event& event)
 {
-    if (readerEnabled && events)
+    if (openknxNfc.active() && events)
         xQueueSend(events, &event, 0); // Overflow drops the event, never grants access.
 }
 
@@ -189,101 +145,45 @@ bool HomeKeyModule::pairingAllowed() const
     return enabled && pairingPermitted && HomeKey::windowOpen(millis(), pairingUntil.load(), pairingEpoch.load(), commissioningEpoch.load());
 }
 
-void HomeKeyModule::readerTask()
+bool HomeKeyModule::prepareNfc(std::array<uint8_t,18>& ecp, uint32_t& token)
 {
-#ifdef OPENKNX_NFC_ST25R3916_I2C
-    reader = std::make_unique<St25r3916Reader>(OPENKNX_GPIO_WIRE, OPENKNX_GPIO_SDA, OPENKNX_GPIO_SCL,
-        ecp, OPENKNX_ST25R3916_I2C_ADDRESS, OPENKNX_GPIO_CLOCK);
-#elif defined(HOMEKEY_READER_I2C)
-    reader = std::make_unique<Pn7160Reader>(std::array<uint8_t, 4>{}, HOMEKEY_IRQ_PIN, HOMEKEY_VEN_PIN, ecp);
-#else
-    reader = std::make_unique<Pn7160Reader>(std::array<uint8_t, 4>{HOMEKEY_SPI_CS, HOMEKEY_SPI_SCLK, HOMEKEY_SPI_MISO, HOMEKEY_SPI_MOSI}, HOMEKEY_IRQ_PIN, HOMEKEY_VEN_PIN, ecp);
-#endif
-    bool connected = false;
-    uint32_t appliedGeneration = UINT32_MAX;
-    bool appliedEcpActive = false;
-    for (;;)
-    {
-        if (!readerEnabled || (enabled && !provisioningReady))
-        {
-            if (connected) reader->stop();
-            connected = false;
-            vTaskDelay(pdMS_TO_TICKS(100));
-            continue;
-        }
-        bool ecpActive;
-        uint32_t generation;
-        {
-            std::lock_guard<std::recursive_mutex> guard(store.mutex);
-            ecpActive = enabled && provisioningReady && store.healthy && store.identity.group_identifier.size() == 8;
-            generation = store.generation;
-            if (generation != appliedGeneration || ecpActive != appliedEcpActive)
-            {
-                ecp.fill(0);
-                if (ecpActive)
-                {
-                    const uint8_t head[8] = {0x6a, 2, 0xcb, 2, 6, 2, 0x11, 0};
-                    std::copy(head, head + 8, ecp.begin());
-                    std::copy(store.identity.group_identifier.begin(), store.identity.group_identifier.end(), ecp.begin() + 8);
-                    // CRC-A is owned with the ECP buffer; PN7161 sends the first 16 bytes.
-                    uint16_t crc = 0x6363;
-                    for (size_t i = 0; i < 16; ++i)
-                    {
-                        uint8_t byte = ecp[i] ^ (crc & 0xff);
-                        byte ^= byte << 4;
-                        crc = (crc >> 8) ^ (uint16_t(byte) << 8) ^ (uint16_t(byte) << 3) ^ (byte >> 4);
-                    }
-                    ecp[16] = crc; ecp[17] = crc >> 8;
-                }
-            }
-        }
-        if (!connected)
-        {
-            connected = reader->init() && reader->beginDiscovery();
-            Event diagnostic;
-            diagnostic.kind = connected ? EventKind::ReaderReady : EventKind::ReaderFailed;
-            enqueue(diagnostic);
-            if (!connected) { reader->stop(); vTaskDelay(pdMS_TO_TICKS(5000)); continue; }
-            appliedGeneration = generation;
-            appliedEcpActive = ecpActive;
-        }
-        else if (generation != appliedGeneration || ecpActive != appliedEcpActive)
-        {
-            if (!reader->updateECP()) { reader->stop(); connected = false; continue; }
-            appliedGeneration = generation;
-            appliedEcpActive = ecpActive;
-        }
-        std::vector<uint8_t> uid;
-        std::array<uint8_t, 2> atqa{};
-        uint8_t sak = 0;
-        if (reader->pollForTag(uid, atqa, sak, 250))
-        {
-            Event diagnostic;
-            diagnostic.kind = EventKind::TagDetected;
-            enqueue(diagnostic);
-            handleTag(uid, sak);
-            const TickType_t detectedAt = xTaskGetTickCount();
-            const bool homeKeyAtScan = enabled;
-            while (readerEnabled && enabled == homeKeyAtScan && reader->isTagStillPresent() &&
-                   (xTaskGetTickCount() - detectedAt) < pdMS_TO_TICKS(10000))
-                vTaskDelay(pdMS_TO_TICKS(100));
-            reader->releaseTag();
-        }
-        if (!reader->healthCheck()) { reader->stop(); connected = false; }
-        vTaskDelay(pdMS_TO_TICKS(20));
+    std::unique_lock<std::recursive_mutex> guard(store.mutex, std::try_to_lock);
+    if (!guard.owns_lock()) return false;
+    token = store.generation;
+    ecp.fill(0);
+    if (!enabled || !provisioningReady || !store.healthy || store.identity.group_identifier.size()!=8) return true;
+    const uint8_t head[8]={0x6a,2,0xcb,2,6,2,0x11,0};
+    std::copy(head,head+8,ecp.begin());
+    std::copy(store.identity.group_identifier.begin(),store.identity.group_identifier.end(),ecp.begin()+8);
+    uint16_t crc=0x6363;
+    for (size_t i=0;i<16;++i) {
+        uint8_t byte=ecp[i]^(crc&0xff);byte^=byte<<4;
+        crc=(crc>>8)^(uint16_t(byte)<<8)^(uint16_t(byte)<<3)^(byte>>4);
     }
+    ecp[16]=crc;ecp[17]=crc>>8;
+    return true;
+}
+
+bool HomeKeyModule::authorizeNfcUid(const uint8_t* uid, uint8_t length, uint32_t token)
+{
+    if (!allowUid || !openknxNfc.active()) return false;
+    std::unique_lock<std::recursive_mutex> guard(store.mutex,std::try_to_lock);
+    if (!guard.owns_lock() || token!=store.generation) return false;
+    uint16_t reserved[HomeKey::MaxMappings];size_t count=0;
+    for (const auto& mapping:activeMappings()) reserved[count++]=mapping.accessId;
+    return openknxAccessControl.processExternalNfcUid(uid,length,reserved,count);
 }
 
 void HomeKeyModule::processInputKo(GroupObject& ko)
 {
-    if (!knx.configured()) return;
+    if (!knx.configured() || !ParamHK_Enabled) return;
     if (started && ko.asap() == HK_KoLockFeedback)
         provisioning->feedback(ko.value(DPT_Switch));
-    else if (ko.asap() == HK_KoCommissioningControl)
+    else if (ParamACC_EnableRawData && ko.asap() == HK_KoCommissioningControl)
     {
         requestCommissioning(ko.value(DPT_Switch));
     }
-    else if (ko.asap() == HK_KoEndpointIndex)
+    else if (ParamACC_EnableRawData && ko.asap() == HK_KoEndpointIndex)
     {
         endpointIndex = ko.value(DPT_Value_1_Ucount);
         endpointDirty = true;
@@ -314,6 +214,14 @@ void HomeKeyModule::publishEndpoint()
 
 void HomeKeyModule::updateStatus()
 {
+    // Match ETS visibility and avoid sending diagnostics or endpoint identities
+    // through previously associated objects when raw data is disabled.
+    if (!ParamHK_Enabled || !ParamACC_EnableRawData)
+    {
+        reportedCommissioning = reportedResult = reportedAuthorization = -1;
+        endpointDirty = true;
+        return;
+    }
     int open = pairingAllowed();
     int result = commissioningResult.load();
     if (open != reportedCommissioning) { KoHK_CommissioningOpen.value(bool(open), DPT_Switch); reportedCommissioning = open; }
@@ -518,9 +426,9 @@ void HomeKeyModule::showMemory()
     logInfoP("Internal heap: free=%u largest=%u minimum=%u bytes",
         unsigned(heap_caps_get_free_size(caps)), unsigned(heap_caps_get_largest_free_block(caps)),
         unsigned(heap_caps_get_minimum_free_size(caps)));
-    logInfoP("HomeKey stack minimum free/size: NFC=%u/%u HAP=%u/%u bytes",
-        readerHandle ? unsigned(uxTaskGetStackHighWaterMark(readerHandle)) : 0,
-        unsigned(OPENKNX_HOMEKEY_NFC_STACK_SIZE),
+    logInfoP("Task stack minimum free/size: NFC=%u/%u HAP=%u/%u bytes",
+        unsigned(openknxNfc.stackHeadroom()),
+        unsigned(OPENKNX_NFC_STACK_SIZE),
         hapHandle ? unsigned(uxTaskGetStackHighWaterMark(hapHandle)) : 0,
         unsigned(OPENKNX_HOMEKEY_HAP_STACK_SIZE));
 

@@ -4,39 +4,31 @@
 #include "ddk/transport/NfcChannel.h"
 #include <algorithm>
 
-void HomeKeyModule::handleTag(const std::vector<uint8_t>& uid, uint8_t sak)
+bool HomeKeyModule::processNfcTag(INfcReader& reader, const std::vector<uint8_t>& uid, uint8_t sak)
 {
+    if (!homeKeyConfigured) return false; // Generic worker owns ordinary UID mode.
     std::vector<uint8_t> response;
-    bool isoDep = sak & 0x20;
-    bool exchanged = false;
-    if (isoDep)
-        exchanged = reader->exchangeApdu({0x00, 0xa4, 0x04, 0x00, 7, 0xa0, 0, 0, 8, 0x58, 1, 1, 0}, response, 1000);
-    auto selection = HomeKey::classify(isoDep, exchanged, response);
-    if (selection == HomeKey::Selection::HomeKey)
-    {
-        authenticate(response);
-        return; // Never fall back to a UID after a Home Key authentication attempt.
+    const bool isoDep=sak&0x20;
+    const bool exchanged=isoDep && reader.exchangeApdu(
+        {0x00,0xa4,0x04,0x00,7,0xa0,0,0,8,0x58,1,1,0},response,1000);
+    const auto selection=HomeKey::classify(isoDep,exchanged,response);
+    if (selection==HomeKey::Selection::OrdinaryTag) return false;
+    if (selection==HomeKey::Selection::HomeKey) {
+        authenticate(reader,response);
+        return true; // No UID fallback after an authentication attempt.
     }
     Event event;
-    event.reason = !isoDep ? "tag is not ISO-DEP; UID not accepted"
-        : !exchanged ? "Home Key SELECT exchange failed"
-        : response.size() < 2 ? "Home Key SELECT response too short"
-        : selection == HomeKey::Selection::OrdinaryTag ? "Home Key applet not found; UID not accepted"
-        : "Home Key SELECT rejected";
+    event.reason=!exchanged ? "Home Key SELECT exchange failed"
+        : response.size()<2 ? "Home Key SELECT response too short" : "Home Key SELECT rejected";
     {
         std::lock_guard<std::recursive_mutex> guard(store.mutex);
-        event.generation = store.generation;
-    }
-    if (selection == HomeKey::Selection::OrdinaryTag && allowUid && (uid.size() == 4 || uid.size() == 7 || uid.size() == 10))
-    {
-        event.kind = EventKind::Uid;
-        event.uidLength = uid.size();
-        std::copy(uid.begin(), uid.end(), event.uid);
+        event.generation=store.generation;
     }
     enqueue(event);
+    return true; // Malformed/failed HomeKey exchange is consumed, never becomes a UID grant.
 }
 
-void HomeKeyModule::authenticate(const std::vector<uint8_t>& response)
+void HomeKeyModule::authenticate(INfcReader& reader, const std::vector<uint8_t>& response)
 {
     std::lock_guard<std::recursive_mutex> guard(store.mutex);
     Event event;
@@ -49,9 +41,9 @@ void HomeKeyModule::authenticate(const std::vector<uint8_t>& response)
         event.generation = store.generation; enqueue(event); return;
     }
     bool exchangeFailed = false;
-    auto channel = std::make_shared<ddk::NfcChannel>([this, &exchangeFailed](std::vector<uint8_t>& send, std::vector<uint8_t>& receive)
+    auto channel = std::make_shared<ddk::NfcChannel>([this, &reader, &exchangeFailed](std::vector<uint8_t>& send, std::vector<uint8_t>& receive)
         {
-            const bool exchanged = enabled && send.size() <= 255 && reader->exchangeApdu(send, receive, 1000);
+            const bool exchanged = enabled && send.size() <= 255 && reader.exchangeApdu(send, receive, 1000);
             if (!exchanged) exchangeFailed = true;
             return exchanged;
         });

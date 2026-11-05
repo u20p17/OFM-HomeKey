@@ -194,15 +194,15 @@
           <ParameterRef Id="%AID%_P-%TT%00515_R-%TT%0051501" RefId="%AID%_P-%TT%00515" />
         </ParameterRefs>
         <ComObjectTable>
-          <ComObject Id="%AID%_O-%TT%00001" Name="LockFeedback" Number="0" ObjectSize="1 Bit" Text="Physische Verriegelung" FunctionText="Home Key: 1=verriegelt" ReadFlag="Disabled" WriteFlag="Enabled" CommunicationFlag="Enabled" TransmitFlag="Disabled" UpdateFlag="Enabled" ReadOnInitFlag="Enabled" DatapointType="DPST-1-1" />
-          <ComObject Id="%AID%_O-%TT%00002" Name="CommissioningControl" Number="1" ObjectSize="1 Bit" Text="Inbetriebnahme: 1=5 Minuten öffnen, 0=schließen" FunctionText="Home Key" ReadFlag="Disabled" WriteFlag="Enabled" CommunicationFlag="Enabled" TransmitFlag="Disabled" UpdateFlag="Disabled" ReadOnInitFlag="Disabled" DatapointType="DPST-1-1" />
-          <ComObject Id="%AID%_O-%TT%00003" Name="CommissioningOpen" Number="2" ObjectSize="1 Bit" Text="Inbetriebnahme geöffnet" FunctionText="Home Key" ReadFlag="Enabled" WriteFlag="Disabled" CommunicationFlag="Enabled" TransmitFlag="Enabled" UpdateFlag="Disabled" ReadOnInitFlag="Disabled" DatapointType="DPST-1-1" />
-          <ComObject Id="%AID%_O-%TT%00004" Name="AuthorizationStatus" Number="3" ObjectSize="1 Byte" Text="Berechtigungstabelle: Status" FunctionText="Home Key" ReadFlag="Enabled" WriteFlag="Disabled" CommunicationFlag="Enabled" TransmitFlag="Enabled" UpdateFlag="Disabled" ReadOnInitFlag="Disabled" DatapointType="DPST-5-10" />
-          <ComObject Id="%AID%_O-%TT%00005" Name="EndpointIndex" Number="49" ObjectSize="1 Byte" Text="Provisionierten Endpoint auswählen (0..63)" FunctionText="Home Key" ReadFlag="Disabled" WriteFlag="Enabled" CommunicationFlag="Enabled" TransmitFlag="Disabled" UpdateFlag="Disabled" ReadOnInitFlag="Disabled" DatapointType="DPST-5-10" />
-          <ComObject Id="%AID%_O-%TT%00006" Name="IssuerHigh" Number="50" ObjectSize="14 Bytes" Text="Issuer-ID: erste 8 Hex-Zeichen" FunctionText="Home Key" ReadFlag="Enabled" WriteFlag="Disabled" CommunicationFlag="Enabled" TransmitFlag="Enabled" UpdateFlag="Disabled" ReadOnInitFlag="Disabled" DatapointType="DPST-16-0" />
-          <ComObject Id="%AID%_O-%TT%00007" Name="IssuerLow" Number="51" ObjectSize="14 Bytes" Text="Issuer-ID: letzte 8 Hex-Zeichen" FunctionText="Home Key" ReadFlag="Enabled" WriteFlag="Disabled" CommunicationFlag="Enabled" TransmitFlag="Enabled" UpdateFlag="Disabled" ReadOnInitFlag="Disabled" DatapointType="DPST-16-0" />
-          <ComObject Id="%AID%_O-%TT%00008" Name="EndpointId" Number="52" ObjectSize="14 Bytes" Text="Endpoint-ID: 12 Hex-Zeichen" FunctionText="Home Key" ReadFlag="Enabled" WriteFlag="Disabled" CommunicationFlag="Enabled" TransmitFlag="Enabled" UpdateFlag="Disabled" ReadOnInitFlag="Disabled" DatapointType="DPST-16-0" />
-          <ComObject Id="%AID%_O-%TT%00009" Name="CommissioningResult" Number="53" ObjectSize="1 Byte" Text="Inbetriebnahme: Befehlsergebnis" FunctionText="Home Key" ReadFlag="Enabled" WriteFlag="Disabled" CommunicationFlag="Enabled" TransmitFlag="Enabled" UpdateFlag="Disabled" ReadOnInitFlag="Disabled" DatapointType="DPST-5-10" />
+          <ComObject Id="%AID%_O-%TT%00001" Name="LockFeedback" Number="0" ObjectSize="1 Bit" Text="HomeKey Verriegelungsstatus" FunctionText="Rückmeldung: 1 = verriegelt, 0 = entriegelt" ReadFlag="Disabled" WriteFlag="Enabled" CommunicationFlag="Enabled" TransmitFlag="Disabled" UpdateFlag="Enabled" ReadOnInitFlag="Enabled" DatapointType="DPST-1-1" />
+          <ComObject Id="%AID%_O-%TT%00002" Name="CommissioningControl" Number="1" ObjectSize="1 Bit" Text="HomeKey Pairingsteuerung" FunctionText="1 = 5 Minuten öffnen, 0 = schließen" ReadFlag="Disabled" WriteFlag="Enabled" CommunicationFlag="Enabled" TransmitFlag="Disabled" UpdateFlag="Disabled" ReadOnInitFlag="Disabled" DatapointType="DPST-1-1" />
+          <ComObject Id="%AID%_O-%TT%00003" Name="CommissioningOpen" Number="2" ObjectSize="1 Bit" Text="HomeKey Pairingstatus" FunctionText="1 = geöffnet, 0 = geschlossen" ReadFlag="Enabled" WriteFlag="Disabled" CommunicationFlag="Enabled" TransmitFlag="Enabled" UpdateFlag="Disabled" ReadOnInitFlag="Disabled" DatapointType="DPST-1-1" />
+          <ComObject Id="%AID%_O-%TT%00004" Name="AuthorizationStatus" Number="3" ObjectSize="1 Byte" Text="HomeKey Berechtigungsstatus" FunctionText="Status der Berechtigungstabelle" ReadFlag="Enabled" WriteFlag="Disabled" CommunicationFlag="Enabled" TransmitFlag="Enabled" UpdateFlag="Disabled" ReadOnInitFlag="Disabled" DatapointType="DPST-5-10" />
+          <ComObject Id="%AID%_O-%TT%00005" Name="EndpointIndex" Number="49" ObjectSize="1 Byte" Text="HomeKey Geräteauswahl" FunctionText="Geräteindex 0–63" ReadFlag="Disabled" WriteFlag="Enabled" CommunicationFlag="Enabled" TransmitFlag="Disabled" UpdateFlag="Disabled" ReadOnInitFlag="Disabled" DatapointType="DPST-5-10" />
+          <ComObject Id="%AID%_O-%TT%00006" Name="IssuerHigh" Number="50" ObjectSize="14 Bytes" Text="HomeKey Issuer-ID (Teil 1)" FunctionText="Erste 8 Hex-Zeichen" ReadFlag="Enabled" WriteFlag="Disabled" CommunicationFlag="Enabled" TransmitFlag="Enabled" UpdateFlag="Disabled" ReadOnInitFlag="Disabled" DatapointType="DPST-16-0" />
+          <ComObject Id="%AID%_O-%TT%00007" Name="IssuerLow" Number="51" ObjectSize="14 Bytes" Text="HomeKey Issuer-ID (Teil 2)" FunctionText="Letzte 8 Hex-Zeichen" ReadFlag="Enabled" WriteFlag="Disabled" CommunicationFlag="Enabled" TransmitFlag="Enabled" UpdateFlag="Disabled" ReadOnInitFlag="Disabled" DatapointType="DPST-16-0" />
+          <ComObject Id="%AID%_O-%TT%00008" Name="EndpointId" Number="52" ObjectSize="14 Bytes" Text="HomeKey Geräte-ID" FunctionText="Endpoint-ID: 12 Hex-Zeichen" ReadFlag="Enabled" WriteFlag="Disabled" CommunicationFlag="Enabled" TransmitFlag="Enabled" UpdateFlag="Disabled" ReadOnInitFlag="Disabled" DatapointType="DPST-16-0" />
+          <ComObject Id="%AID%_O-%TT%00009" Name="CommissioningResult" Number="53" ObjectSize="1 Byte" Text="HomeKey Pairing-Befehlsergebnis" FunctionText="Ergebnis des Inbetriebnahmebefehls" ReadFlag="Enabled" WriteFlag="Disabled" CommunicationFlag="Enabled" TransmitFlag="Enabled" UpdateFlag="Disabled" ReadOnInitFlag="Disabled" DatapointType="DPST-5-10" />
         </ComObjectTable>
         <ComObjectRefs>
           <ComObjectRef Id="%AID%_O-%TT%00001_R-%TT%0000101" RefId="%AID%_O-%TT%00001" />
@@ -293,23 +293,30 @@
         <Channel Id="%AID%_CH-%PREFIX%" Number="%PREFIX%" Name="Home Key" Text="Apple Home Key" HelpContext="HK-Dokumentation">
           <ParameterBlock Id="%AID%_PB-nnn" Text="Apple Home Key" Icon="apple" HelpContext="HK-Dokumentation">
             <ParameterRefRef RefId="%AID%_UP-%TT%00001_R-%TT%0000101" HelpContext="HK-Aktivieren" />
-            <choose ParamRefId="%AID%_UP-%TT%00001_R-%TT%0000101"><when test="1">
-              <ParameterRefRef RefId="%AID%_UP-%TT%00002_R-%TT%0000201" HelpContext="HK-Inbetriebnahme" />
+            <choose ParamRefId="%AID%_UP-%TT%00001_R-%TT%0000101">
+              <when test="0">
+                <ParameterSeparator Id="%AID%_PS-nnn" Text="Konventionelle UID-Tags sind aktiv. Gespeicherte Tags verwenden die NFC-Zuordnungen. Bei aktiviertem HomeKey kann die UID-Freigabe ausgeschaltet werden." UIHint="Information" HelpContext="HK-UID-Tags" />
+              </when>
+              <when test="1">
               <ParameterRefRef RefId="%AID%_UP-%TT%00003_R-%TT%0000301" HelpContext="HK-UID-Tags" />
+              <ParameterRefRef RefId="%AID%_UP-%TT%00002_R-%TT%0000201" HelpContext="HK-Inbetriebnahme" />
               <Button Id="%AID%_B-%TT%00001" Name="openPairing" Text="Pairing öffnen (5 Minuten)" EventHandler="HK_openPairing" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Pairing" />
               <Button Id="%AID%_B-%TT%00002" Name="closePairing" Text="Pairing schließen" EventHandler="HK_closePairing" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Pairing" />
               <Button Id="%AID%_B-%TT%00003" Name="refreshStatus" Text="Status aktualisieren" EventHandler="HK_refreshStatus" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Online-Status" />
               <ParameterRefRef RefId="%AID%_P-%TT%00005_R-%TT%0000501" HelpContext="HK-Online-Status" />
               <ComObjectRefRef RefId="%AID%_O-%TT%00001_R-%TT%0000101" />
-              <ParameterSeparator Id="%AID%_PS-nnn" Text="Setup-Code auf der Home-Key-Seite des Webservers oder lokal mit hk code setzen. HomeKit-Kopplung allein gewährt keinen Zutritt. Endpoint-IDs sind über die Kommunikationsobjekte auslesbar." UIHint="Information" HelpContext="HK-Setup-Code" />
-              <ComObjectRefRef RefId="%AID%_O-%TT%00002_R-%TT%0000201" />
-              <ComObjectRefRef RefId="%AID%_O-%TT%00003_R-%TT%0000301" />
-              <ComObjectRefRef RefId="%AID%_O-%TT%00004_R-%TT%0000401" />
-              <ComObjectRefRef RefId="%AID%_O-%TT%00005_R-%TT%0000501" />
-              <ComObjectRefRef RefId="%AID%_O-%TT%00006_R-%TT%0000601" />
-              <ComObjectRefRef RefId="%AID%_O-%TT%00007_R-%TT%0000701" />
-              <ComObjectRefRef RefId="%AID%_O-%TT%00008_R-%TT%0000801" />
-              <ComObjectRefRef RefId="%AID%_O-%TT%00009_R-%TT%0000901" />
+              <ParameterSeparator Id="%AID%_PS-nnn" Text="Setup-Code auf der Home-Key-Seite des Webservers oder lokal mit hk code setzen. HomeKit-Kopplung allein gewährt keinen Zutritt. Geräte-IDs können mit der ETS-Schaltfläche importiert werden. Zusätzliche Diagnoseobjekte erscheinen bei Rohdaten auf den Bus senden = Ja." UIHint="Information" HelpContext="HK-Setup-Code" />
+              <!-- ACC EnableRawData: integration prefix 2, parameter 000011. -->
+              <choose ParamRefId="%AID%_UP-2000011_R-200001101"><when test="1">
+                <ComObjectRefRef RefId="%AID%_O-%TT%00002_R-%TT%0000201" />
+                <ComObjectRefRef RefId="%AID%_O-%TT%00003_R-%TT%0000301" />
+                <ComObjectRefRef RefId="%AID%_O-%TT%00004_R-%TT%0000401" />
+                <ComObjectRefRef RefId="%AID%_O-%TT%00005_R-%TT%0000501" />
+                <ComObjectRefRef RefId="%AID%_O-%TT%00006_R-%TT%0000601" />
+                <ComObjectRefRef RefId="%AID%_O-%TT%00007_R-%TT%0000701" />
+                <ComObjectRefRef RefId="%AID%_O-%TT%00008_R-%TT%0000801" />
+                <ComObjectRefRef RefId="%AID%_O-%TT%00009_R-%TT%0000901" />
+              </when></choose>
               <ParameterRefRef RefId="%AID%_UP-%TT%00004_R-%TT%0000401" HelpContext="HK-ETS-Berechtigungen" />
               <choose ParamRefId="%AID%_UP-%TT%00004_R-%TT%0000401"><when test="1">
               <ParameterSeparator Id="%AID%_PS-nnn" Text="Bezeichnungen dienen der Zuordnung in ETS. Gerät löschen widerruft den Endpoint im Reader und leert passende Berechtigungen in ETS; dazu den Programmiermodus einschalten." UIHint="Information" />

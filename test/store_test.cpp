@@ -78,6 +78,34 @@ int main()
     }
     assert(parseEtsRows(rows.data(), rows.size(), table) && table.size() == EtsRows);
 
+    // The single enabled slot shown in the ETS screenshot is a valid mapping.
+    rows.fill(0);
+    setRow(0, "a8587854c92ce68c", "f3d38447f0c2", 0);
+    EtsTableDiagnostic diagnostic;
+    assert(parseEtsRows(rows.data(), rows.size(), table, &diagnostic));
+    assert(table.size() == 1 && table[0].accessId == 0 && diagnostic.reason == nullptr);
+    assert(lookup(table, IssuerId{0xa8,0x58,0x78,0x54,0xc9,0x2c,0xe6,0x8c},
+        EndpointId{0xf3,0xd3,0x84,0x47,0xf0,0xc2}) == 0);
+    auto screenshotRows = rows;
+    rows[17] = 0x20;
+    assert(!parseEtsRows(rows.data(), rows.size(), table, &diagnostic));
+    assert(table.empty() && diagnostic.slot == 1 && diagnostic.value == 0x20);
+    assert(!strcmp(diagnostic.reason, "Issuer-ID trailing byte must be 0x00"));
+    rows = screenshotRows; rows[30] = 0xff;
+    assert(!parseEtsRows(rows.data(), rows.size(), table, &diagnostic));
+    assert(diagnostic.slot == 1 && diagnostic.value == 0xff);
+    assert(!strcmp(diagnostic.reason, "Endpoint-ID trailing byte must be 0x00"));
+    rows = screenshotRows; setRow(5, "001122334455aabb", "012345abcdef", 0);
+    assert(!parseEtsRows(rows.data(), rows.size(), table, &diagnostic));
+    assert(diagnostic.slot == 6 && diagnostic.conflictingSlot == 1);
+    assert(!strcmp(diagnostic.reason, "duplicate NFC-Tag-ID"));
+    rows = screenshotRows; setRow(10, "a8587854c92ce68c", "f3d38447f0c2", 1);
+    assert(!parseEtsRows(rows.data(), rows.size(), table, &diagnostic));
+    assert(diagnostic.slot == 11 && diagnostic.conflictingSlot == 1);
+    assert(!strcmp(diagnostic.reason, "duplicate Issuer-ID + Endpoint-ID"));
+    assert(parseEtsRows(screenshotRows.data(), screenshotRows.size(), table, &diagnostic));
+    assert(diagnostic.reason == nullptr && diagnostic.slot == 0);
+
     // Selection alone is never treated as authentication. Ambiguous failures do not downgrade.
     assert(classify(false, false, {}) == Selection::OrdinaryTag);
     assert(classify(true, true, {0x6a, 0x82}) == Selection::OrdinaryTag);

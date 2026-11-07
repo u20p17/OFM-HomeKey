@@ -64,7 +64,15 @@ void HomeKeyModule::loop()
         static_assert(HK_Authorization02Enabled - HK_Authorization01Enabled == HomeKey::EtsRowBytes, "ETS row layout changed");
         identification.cancel();
         etsAuthorization = ParamHK_EtsAuthorization;
-        etsTableValid = !etsAuthorization || HomeKey::parseEtsRows(knx.paramData(HK_Authorization01Enabled), HomeKey::EtsRows * HomeKey::EtsRowBytes, etsMappings);
+        HomeKey::EtsTableDiagnostic tableDiagnostic;
+        etsTableValid = !etsAuthorization || HomeKey::parseEtsRows(knx.paramData(HK_Authorization01Enabled),
+            HomeKey::EtsRows * HomeKey::EtsRowBytes, etsMappings, &tableDiagnostic);
+        if (!etsTableValid)
+            logErrorP("ETS permission slot %u invalid: %s; value=%u (0x%04X); conflicting slot=%u; parameter offset=%u",
+                unsigned(tableDiagnostic.slot), tableDiagnostic.reason,
+                unsigned(tableDiagnostic.value), unsigned(tableDiagnostic.value),
+                unsigned(tableDiagnostic.conflictingSlot),
+                unsigned(HK_Authorization01Enabled + (tableDiagnostic.slot ? tableDiagnostic.slot - 1 : 0) * HomeKey::EtsRowBytes));
         ++store.generation; // Downloaded policy invalidates every pending result.
         policyLoaded = true;
         endpointDirty = true;

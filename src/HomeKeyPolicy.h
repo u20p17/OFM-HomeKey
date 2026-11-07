@@ -65,23 +65,51 @@ namespace HomeKey
         }
         return true;
     }
+    struct EtsTableDiagnostic
+    {
+        const char* reason = nullptr;
+        uint8_t slot = 0; // 1-based; zero means the entire input is unavailable.
+        uint8_t conflictingSlot = 0;
+        uint16_t value = 0;
+    };
     // Exact ETS layout: enabled bit 7, 16 issuer hex bytes + NUL, 12 endpoint hex
     // bytes + NUL, then a big-endian logical ID. Reject the entire table on ambiguity.
-    inline bool parseEtsRows(const uint8_t* data, size_t size, std::vector<Mapping>& result)
+    inline bool parseEtsRows(const uint8_t* data, size_t size, std::vector<Mapping>& result,
+                             EtsTableDiagnostic* diagnostic = nullptr)
     {
         result.clear();
-        if (!data || size != EtsRows * EtsRowBytes) return false;
+        if (diagnostic) *diagnostic = {};
+        auto fail = [&](const char* reason, uint8_t slot, uint16_t value = 0, uint8_t conflict = 0)
+        {
+            if (diagnostic) *diagnostic = {reason, slot, conflict, value};
+            return false;
+        };
+        if (!data || size != EtsRows * EtsRowBytes)
+            return fail("permission data missing or wrong size", 0);
         std::vector<Mapping> parsed;
         parsed.reserve(EtsRows);
+        std::array<uint8_t, EtsRows> sourceSlots{};
         for (size_t i = 0; i < EtsRows; ++i)
         {
             const uint8_t* row = data + i * EtsRowBytes;
             if (!(row[0] & 0x80)) continue;
+            const uint8_t slot = i + 1;
             Mapping entry;
             entry.accessId = (uint16_t(row[31]) << 8) | row[32];
-            if (entry.accessId >= 1500 || row[17] != 0 || row[30] != 0 || !parseHex(row + 1, entry.issuer) || !parseHex(row + 18, entry.endpoint)) return false;
-            for (const auto& existing : parsed)
-                if (existing.accessId == entry.accessId || (existing.issuer == entry.issuer && existing.endpoint == entry.endpoint)) return false;
+            if (entry.accessId >= 1500) return fail("NFC-Tag-ID outside 0..1499", slot, entry.accessId);
+            if (row[17] != 0) return fail("Issuer-ID trailing byte must be 0x00", slot, row[17]);
+            if (row[30] != 0) return fail("Endpoint-ID trailing byte must be 0x00", slot, row[30]);
+            if (!parseHex(row + 1, entry.issuer)) return fail("Issuer-ID must contain 16 hex characters", slot);
+            if (!parseHex(row + 18, entry.endpoint)) return fail("Endpoint-ID must contain 12 hex characters", slot);
+            for (size_t previous = 0; previous < parsed.size(); ++previous)
+            {
+                const auto& existing = parsed[previous];
+                if (existing.accessId == entry.accessId)
+                    return fail("duplicate NFC-Tag-ID", slot, entry.accessId, sourceSlots[previous]);
+                if (existing.issuer == entry.issuer && existing.endpoint == entry.endpoint)
+                    return fail("duplicate Issuer-ID + Endpoint-ID", slot, entry.accessId, sourceSlots[previous]);
+            }
+            sourceSlots[parsed.size()] = slot;
             parsed.push_back(entry);
         }
         result.swap(parsed);

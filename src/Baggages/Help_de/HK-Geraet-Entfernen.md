@@ -4,7 +4,7 @@ Hier wird das ausgewählte HomeKey-Gerät dauerhaft aus der lokalen Zutrittsverw
 
 **Gerät löschen** entfernt die Geräteschlüssel im Leser und speichert eine dauerhafte Sperre für die Kombination aus Issuer-ID und Endpoint-ID. Erst nach erfolgreicher Bestätigung werden die passenden Plätze in ETS einschließlich Bezeichnung geleert. Bei einem Fehler bleiben die ETS-Einträge erhalten.
 
-Andere Geräte, die gemeinsame Issuer-ID und die Kopplung des Lesers mit Apple Home bleiben erhalten. Ein iPhone und eine Watch sind getrennte Geräte und werden einzeln gelöscht.
+Die Schaltfläche löscht nur das ausgewählte HomeKey-Gerät. Andere HomeKey-Geräte, herkömmliche UID-Tags, die gemeinsame Issuer-ID und die Kopplung des Lesers mit Apple Home bleiben erhalten. Ein iPhone und eine Watch sind getrennte Geräte und werden einzeln gelöscht.
 
 Die Sperre bleibt nach Neustart, erneutem Parameterdownload und erneuter Provisionierung dieser Geräte-ID bestehen. Der Schlüssel kann weiterhin in Apple Wallet sichtbar sein; das lokale Löschen entfernt diesen Wallet-Eintrag nicht. Zum Wiederverwenden unter **Vorgang → anlernen** das Gerät scannen und ausdrücklich **Erneut zulassen** wählen.
 

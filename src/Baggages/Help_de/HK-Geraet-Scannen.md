@@ -1,9 +1,9 @@
 ### Gerät scannen
 
-Mit dieser Schaltfläche wird ein bereits gekoppeltes iPhone oder eine Apple Watch durch einen authentifizierten NFC-Scan erkannt. Unter **Vorgang → anlernen** die NFC-Inbetriebnahme freigeben. Der Programmiermodus ist dafür nicht erforderlich. Anschließend das gewünschte Gerät an den Leser halten.
+Mit dieser Schaltfläche wird festgestellt, welches bereits gekoppelte iPhone oder welche Apple Watch gerade am NFC-Leser vorgehalten wird. Verwenden Sie sie unter **Vorgang → anlernen**, um das tatsächliche Gerät seinem ETS-Eintrag zuzuordnen.
 
-Der Scan wartet bis zu **60 Sekunden**. Während dieser Identifizierung werden keine UID- oder HomeKey-Zutrittsaktionen ausgelöst. Ein gewöhnlicher UID-Tag kann damit kein HomeKey-Gerät ersetzen.
+**NFC-Inbetriebnahme über USB/KNX erlauben** muss auf **Ja** stehen. Nach dem Drücken bleiben bis zu **60 Sekunden** zum Vorhalten. Der Programmiermodus ist nicht erforderlich. Das Gerät muss bereits einen HomeKey für diesen Leser besitzen; die Schaltfläche startet keine Kopplung mit Apple Home.
 
-Nach erfolgreicher Identifizierung wird ein vorhandener passender Platz ausgewählt oder ein freier Platz mit den Geräte-IDs belegt. Vorhandene Bezeichnungen und Tag-IDs bleiben erhalten. Neue Einträge bleiben deaktiviert; die Bezeichnung muss manuell vergeben werden.
+Nach erfolgreicher Authentifizierung werden Issuer-ID und Endpoint-ID übernommen. Ein vorhandener passender HomeKey-Platz wird ausgewählt oder ein vollständig freier Platz belegt. Vorhandene Bezeichnungen und Tag-IDs bleiben erhalten. Neue Einträge bleiben deaktiviert und erhalten zunächst Tag-ID 0.
 
-Ein gesperrtes Gerät wird als gesperrt gemeldet. Die Identifizierung hebt diese Sperre nicht auf. Verwenden Sie dafür ausdrücklich **Erneut zulassen**. Prüfen Sie danach Berechtigung, freie NFC-Tag-ID und Aktionen und laden Sie die Parameter herunter.
+Danach eine Bezeichnung und freie NFC-Tag-ID eintragen, die Berechtigung aktivieren, die Aktionen zuordnen, **Zuordnung prüfen** ausführen und die Parameter herunterladen. Während der Identifizierung werden keine Zutrittsaktionen ausgelöst. Meldet ETS ein gesperrtes Gerät, dient **Erneut zulassen** zur ausdrücklich gewünschten Wiederfreigabe.

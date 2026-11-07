@@ -297,9 +297,9 @@
               <when test="1">
               <ParameterRefRef RefId="%AID%_UP-%TT%00003_R-%TT%0000301" HelpContext="HK-UID-Tags" />
               <ParameterRefRef RefId="%AID%_UP-%TT%00002_R-%TT%0000201" HelpContext="HK-Inbetriebnahme" />
-              <Button Id="%AID%_B-%TT%00001" Name="openPairing" Text="Pairing öffnen (5 Minuten)" EventHandler="HK_openPairing" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Pairing" />
-              <Button Id="%AID%_B-%TT%00002" Name="closePairing" Text="Pairing schließen" EventHandler="HK_closePairing" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Pairing" />
-              <Button Id="%AID%_B-%TT%00003" Name="refreshStatus" Text="Status aktualisieren" EventHandler="HK_refreshStatus" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Online-Status" />
+              <Button Id="%AID%_B-%TT%00001" Name="openPairing" Text="Pairing öffnen (5 Minuten)" EventHandler="HK_openPairing" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Pairing-Oeffnen" />
+              <Button Id="%AID%_B-%TT%00002" Name="closePairing" Text="Pairing schließen" EventHandler="HK_closePairing" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Pairing-Schliessen" />
+              <Button Id="%AID%_B-%TT%00003" Name="refreshStatus" Text="Status aktualisieren" EventHandler="HK_refreshStatus" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Status-Aktualisieren" />
               <ParameterRefRef RefId="%AID%_P-%TT%00005_R-%TT%0000501" HelpContext="HK-Online-Status" />
               <ComObjectRefRef RefId="%AID%_O-%TT%00001_R-%TT%0000101" />
               <!-- ACC EnableRawData: integration prefix 2, parameter 000011. -->

@@ -1,9 +1,9 @@
 ### Zuordnung prüfen
 
-Diese Schaltfläche prüft den aktuellen HomeKey-Eintrag vor dem Parameterdownload. Dafür wird der UID-Bestand erneut aus dem Leser eingelesen und mit dem aktuellen ETS-Entwurf verglichen.
+Diese Schaltfläche ist der abschließende Prüfschritt für eine neu eingerichtete oder geänderte HomeKey-Berechtigung. Zuerst am ausgewählten HomeKey-Platz eine Bezeichnung und freie NFC-Tag-ID eintragen und **Berechtigung aktiv → Ja** wählen. Die gewünschten Aktionen im NFC-Tab zuordnen.
 
-Geprüft werden doppelte aktive NFC-Tag-IDs, doppelte Geräteidentitäten, Kollisionen mit UID-Tags sowie die gespeicherte Gerätesperre und die Provisionierung des ausgewählten Geräts. Das Gerät muss über die ETS-KNX-Schnittstelle erreichbar sein.
+Beim Drücken wird der aktuelle UID-Bestand aus dem Leser eingelesen. Die aktiven ETS-Berechtigungen werden auf doppelte Tag-IDs, doppelte Geräteidentitäten und Kollisionen mit UID-Tags geprüft. Zusätzlich wird abgefragt, ob das ausgewählte HomeKey-Gerät im Leser provisioniert oder dauerhaft gesperrt ist. Der Programmiermodus ist dafür nicht erforderlich.
 
-Die Prüfung speichert keine Zutrittsberechtigung im Leser und löst keine Aktion aus. Prüfen Sie auch die Spalte **Aktionen** in der Übersicht. Eine gültige Berechtigung ohne passende Aktionszuordnung führt noch keine Türöffnung aus.
+Die Meldung **Zuordnung geprüft** bestätigt diese Prüfung. Die Berechtigung wird dadurch nicht aktiviert oder auf das Gerät übertragen. Anschließend die Parameter mit ETS herunterladen. Eine Türöffnung wird erst durch einen normalen Scan und die passende Aktionszuordnung ausgelöst.
 
-Nach erfolgreicher Prüfung die Änderungen in ETS speichern und die Parameter herunterladen. Änderungen durch andere Projekte oder Schnittstellen können eine erneute Prüfung erforderlich machen.
+Bei **Gerät ist gesperrt** zuerst unter **Vorgang → anlernen** das Gerät identifizieren und **Erneut zulassen** verwenden. Bei **Gerät ist nicht provisioniert** das gekoppelte iPhone oder die Watch erneut scannen. Nach Änderungen über andere Schnittstellen die Zuordnung erneut prüfen.

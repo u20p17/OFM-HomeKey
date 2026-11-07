@@ -111,6 +111,16 @@ Scan with the iPhone camera or Apple Home's accessory scanner on the same networ
 Pairing does not configure ETS authorization or grant access. The short setup ID
 is a discovery aid, not a secret or an authentication credential.
 
+The HomeKey page and its status endpoint are also available when the KNX
+application is unconfigured or outdated. `GET /homekey/status` reports
+`configured` and the required `applicationVersion` (for example, `11.7`). The
+page then disables setup-code/QR actions and requests a complete matching ETS
+application download. Programming mode alone does not repair an application
+version mismatch. Diagnostic route registration does not initialize the NFC
+worker, HAP provisioning or credential storage while the application is invalid;
+setup-code POSTs are rejected until configuration is valid. Missing web command
+queue memory leaves diagnostic routes available and rejects code writes.
+
 Use the ETS parameter-page buttons `Pairing öffnen (5 Minuten)`, `Pairing
 schließen` and `Status aktualisieren`. They connect to the device through the
 ETS KNX interface using its individual address; no group addresses or Wi-Fi
@@ -533,3 +543,15 @@ Protocol version 1 gains additive commands:
 
 Results 11/12 mean expired identification/full revocation list. Read-only state
 requests accept only commands 0, 3, 6 and 10. Public IDs, never secret keys, cross KNX.
+
+The unconfigured web regression test compiles the actual setup dispatcher and
+HTTP route handlers with instrumented dependencies:
+
+```sh
+python3 test/homekey_web/unconfigured_test.py
+```
+
+It covers invalid ETS configuration, version reporting, programming-mode write
+rejection, configured recovery, idempotent route registration and command-queue
+allocation failure. The browser regression also checks the matching ETS message,
+disabled actions, retained entered QR code and recovery after configuration.

@@ -21,6 +21,7 @@ class HomeKeyModule : public OpenKNX::Module, public NfcReaderExtension
   public:
     const std::string name() override { return "HomeKey"; }
     const std::string version() override { return MODULE_HomeKey_Version; }
+    void setup(bool configured) override;
     void setup() override;
     void loop() override;
     void processInputKo(GroupObject&) override;
@@ -46,6 +47,7 @@ class HomeKeyModule : public OpenKNX::Module, public NfcReaderExtension
     std::array<char, 5> qrSetupId{};
     std::atomic<uint32_t> codeBlockedUntil{0};
 #ifdef OPENKNX_HOMEKEY_WEB
+    bool webInitialized = false;
     void setupWeb();
     void loopWeb();
     struct WebCodeCommand { char code[9] = {}; char previous[9] = {}; uint32_t epoch = 0; };

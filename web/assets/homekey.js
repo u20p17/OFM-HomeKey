@@ -112,6 +112,27 @@
             const response = await fetch('/homekey/status', { cache: 'no-store' });
             if (!response.ok) throw new Error('Status konnte nicht abgefragt werden.');
             const status = await response.json();
+            if (status.configured === false) {
+                setupId = '';
+                save.disabled = qrShow.disabled = true;
+                hideQr();
+                const version = /^\d{1,2}\.\d{1,2}$/.test(status.applicationVersion) ? ` ${status.applicationVersion}` : '';
+                const instruction = `ETS-Anwendung${version} vollständig programmieren. Die Anwendung im Gerät fehlt oder passt nicht zur Firmware; der Programmiermodus allein reicht nicht aus.`;
+                qrResult.dataset.state = 'blocked';
+                qrResult.textContent = permission.textContent = instruction;
+                permission.dataset.state = 'waiting';
+                document.getElementById('homekey-connection').dataset.state = 'waiting';
+                document.getElementById('homekey-summary').textContent = instruction;
+                for (const id of ['homekey-enabled', 'homekey-commissioning', 'homekey-pairing']) {
+                    const badge = document.getElementById(id);
+                    badge.textContent = 'Nicht verfügbar';
+                    badge.dataset.state = 'unknown';
+                }
+                waiting = false;
+                lastState = null;
+                message('');
+                return;
+            }
             setupId = /^[0-9A-Z]{4}$/.test(status.setupId) ? status.setupId : '';
             qrShow.disabled = !status.enabled || !status.commissioning || !status.pairing ||
                 !status.codeConfigured || !setupId || status.codeState === 1 || submitting || waiting;

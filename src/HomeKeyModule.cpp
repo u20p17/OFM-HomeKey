@@ -23,6 +23,15 @@ namespace
 
 HomeKeyModule openknxHomeKey;
 
+void HomeKeyModule::setup(bool configured)
+{
+#ifdef OPENKNX_HOMEKEY_WEB
+    setupWeb(); // Keep diagnostics reachable even without a valid ETS application.
+#endif
+    if (configured)
+        setup();
+}
+
 void HomeKeyModule::setup()
 {
     openknxNfc.attach(this); // The NFC worker is owned by AccessControl, not HomeKey.

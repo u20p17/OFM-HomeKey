@@ -12,8 +12,10 @@ using namespace OpenKNX::Network;
 
 void HomeKeyModule::setupWeb()
 {
+    if (webInitialized) return;
+    webInitialized = true;
     webCommands = xQueueCreate(1, sizeof(WebCodeCommand));
-    if (!webCommands) { logErrorP("Home Key web command queue unavailable"); return; }
+    if (!webCommands) logErrorP("Home Key web command queue unavailable");
     uint8_t random[16];
     esp_fill_random(random, sizeof(random));
     constexpr char digits[] = "0123456789abcdef";
@@ -115,18 +117,22 @@ void HomeKeyModule::setupWeb()
     {
         response.setHeader("Cache-Control", "no-store");
         response.setContentType("application/json");
-        std::string json = "{\"enabled\":";
-        json += enabled ? "true" : "false";
+        const bool configured = knx.configured();
+        std::string json = "{\"configured\":";
+        json += configured ? "true" : "false";
+        json += ",\"applicationVersion\":\"" + std::to_string(MAIN_ApplicationVersion >> 4) + "." + std::to_string(MAIN_ApplicationVersion & 15) + "\"";
+        json += ",\"enabled\":";
+        json += configured && enabled ? "true" : "false";
         json += ",\"commissioning\":";
-        json += pairingPermitted ? "true" : "false";
+        json += configured && pairingPermitted ? "true" : "false";
         json += ",\"pairing\":";
-        json += pairingAllowed() ? "true" : "false";
+        json += configured && pairingAllowed() ? "true" : "false";
         json += ",\"canSetCode\":";
-        json += webCodeAllowed ? "true" : "false";
+        json += configured && webCommands && webCodeAllowed ? "true" : "false";
         json += ",\"codeConfigured\":";
         json += codeConfigured ? "true" : "false";
         json += ",\"setupId\":\"";
-        if (provisioningReady) json += qrSetupId.data();
+        if (configured && provisioningReady) json += qrSetupId.data();
         json += "\"";
         const uint32_t now = millis(), deadline = codeBlockedUntil.load();
         json += ",\"retryAfter\":" + std::to_string(HomeKey::windowOpen(now, deadline) ? (deadline - now + 999) / 1000 : 0);
@@ -137,6 +143,18 @@ void HomeKeyModule::setupWeb()
     {
         response.setHeader("Cache-Control", "no-store");
         response.setContentType("application/json");
+        if (!knx.configured())
+        {
+            response.setStatus(409);
+            response.send("{\"error\":\"Passende ETS-Anwendung zuerst vollständig programmieren.\"}");
+            return;
+        }
+        if (!webCommands)
+        {
+            response.setStatus(503);
+            response.send("{\"error\":\"Speichern derzeit nicht verfügbar; Gerät neu starten.\"}");
+            return;
+        }
         HomeKey::CodeRequest parsed;
         if (!HomeKey::parseCodeRequest(request.body(), request.bodyLength(), parsed))
         {
@@ -189,7 +207,7 @@ void HomeKeyModule::setupWeb()
 
 void HomeKeyModule::loopWeb()
 {
-    webCodeAllowed = enabled && pairingPermitted && provisioningReady && knx.progMode();
+    webCodeAllowed = knx.configured() && webCommands && enabled && pairingPermitted && provisioningReady && knx.progMode();
     WebCodeCommand command;
     if (!webCommands || xQueueReceive(webCommands, &command, 0) != pdTRUE) return;
     if (!webCodeAllowed || command.epoch != commissioningEpoch.load())

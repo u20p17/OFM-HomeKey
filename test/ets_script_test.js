@@ -19,11 +19,12 @@ function fixture(entries) {
         if(data[0]==0) return [0,1,1,1,opened?1:0,opened?1:0,2,f.entries.length].concat(f.generation);
         if(data[0]==1) {opened=true;return [0,1];}
         if(data[0]==2) {opened=false;return [0,1];}
-        if(data[0]==4) {
+        if(data[0]==8) {
             if(!f.programming)return [10,1];
-            if(JSON.stringify(data.slice(2))!=JSON.stringify(f.generation))return [8,1];
-            if(!f.entries[data[1]])return [9,1];
-            f.entries.splice(data[1],1);f.generation[3]++;opened=false;return [0,1];
+            if(JSON.stringify(data.slice(1,5))!=JSON.stringify(f.generation))return [8,1];
+            var identity=HK_hex(data,5,14);
+            f.entries=f.entries.filter(function(e){return HK_hex(e.issuer.concat(e.endpoint),0,14)!=identity;});
+            f.generation[3]++;opened=false;return [0,1];
         }
         var e=f.entries[data[1]];
         return [0,1,data[1],f.entries.length].concat(f.generation,e.issuer,e.endpoint);
@@ -75,18 +76,18 @@ test('Delete selected device, all matching ETS rows and descriptions; keep other
     assert(readFields(f,1)[1]==''&&readFields(f,3)[1]=='','Matching rows not cleared');
     assert(f.parameters.HK_Authorization01Description.value==''&&f.parameters.HK_Authorization03Description.value=='','Description not cleared');
     assert(f.parameters.HK_Authorization02Description.value=='Neues iPhone'&&readFields(f,2)[2]=='0123456789ac','Other row changed');
-    var request=f.calls.filter(function(c){return c[0]==4;})[0];assert(request.length==6&&request[1]==0&&request[5]==1,'Deletion did not use generation snapshot');
+    var request=f.calls.filter(function(c){return c[0]==8;})[0];assert(request.length==19&&request[1]==0&&request[4]==1,'Deletion did not use generation snapshot');
 });
 test('Already absent device can be removed from ETS without deleting a different endpoint',function(){
     var f=fixture([entry(171)]);imported(f);f.entries=[];
     HK_deleteAuthorization01(f.device,f.online,f.progress,{});
-    assert(readFields(f,1)[1]=='','Stale ETS row retained');assert(!f.calls.some(function(c){return c[0]==4;}),'Sent blind deletion');
+    assert(readFields(f,1)[1]=='','Stale ETS row retained');assert(f.calls.some(function(c){return c[0]==8;}),'Absent identity was not persistently revoked');
 });
 test('No programming mode, stale list or device write failure leaves ETS rights intact',function(){
     for(var failure=0;failure<3;failure++){
         var f=fixture([entry(171)]);imported(f);f.parameters.HK_Authorization01Description.value='Keep me';
         if(failure==0)f.programming=false;
-        else f.fail=function(data){if(data[0]==4)return [failure==1?8:7,1];};
+        else f.fail=function(data){if(data[0]==8)return [failure==1?8:7,1];};
         rejects(function(){HK_deleteAuthorization01(f.device,f.online,f.progress,{});},'Deletion should fail');
         assert(readFields(f,1)[2]=='0123456789ab'&&f.parameters.HK_Authorization01Description.value=='Keep me','Failed deletion cleared ETS');
         assert(f.entries.length==1,'Failed deletion changed devices');
@@ -95,7 +96,7 @@ test('No programming mode, stale list or device write failure leaves ETS rights 
 test('Canceled deletion never invokes mutating command',function(){
     var f=fixture([entry(171)]);imported(f);f.canceled=true;
     rejects(function(){HK_deleteAuthorization01(f.device,f.online,f.progress,{});},'Deletion should cancel');
-    assert(!f.calls.some(function(c){return c[0]==4;})&&readFields(f,1)[1]!='','Cancellation mutated credentials');
+    assert(!f.calls.some(function(c){return c[0]==8;})&&readFields(f,1)[1]!='','Cancellation mutated credentials');
 });
 test('Real Common wrapper reassembles endpoint replies at 15-byte APDU size',function(){
     var f=fixture([entry(171)]),incoming=[],reply=[],position=0,packages=0,reads=0;

@@ -53,6 +53,7 @@ void HomeKeyModule::loop()
         std::unique_lock<std::recursive_mutex> guard(store.mutex, std::try_to_lock);
         if (!guard.owns_lock()) { enabled = false; webCodeAllowed = false; return; }
         static_assert(HK_Authorization02Enabled - HK_Authorization01Enabled == HomeKey::EtsRowBytes, "ETS row layout changed");
+        identification.cancel();
         etsAuthorization = ParamHK_EtsAuthorization;
         etsTableValid = !etsAuthorization || HomeKey::parseEtsRows(knx.paramData(HK_Authorization01Enabled), HomeKey::EtsRows * HomeKey::EtsRowBytes, etsMappings);
         ++store.generation; // Downloaded policy invalidates every pending result.
@@ -138,6 +139,7 @@ void HomeKeyModule::loop()
             xQueueSend(events, &event, 0);
             break;
         }
+        if(identification.active(millis()))continue;
         bool granted = false;
         const char* reason = event.reason;
         if (event.generation == store.generation)
@@ -210,8 +212,21 @@ bool HomeKeyModule::authorizeNfcUid(const uint8_t* uid, uint8_t length, uint32_t
     std::unique_lock<std::recursive_mutex> guard(store.mutex,std::try_to_lock);
     if (!guard.owns_lock() || token!=store.generation) return false;
     uint16_t reserved[HomeKey::MaxMappings];size_t count=0;
-    for (const auto& mapping:activeMappings()) reserved[count++]=mapping.accessId;
+    if(identification.active(millis()))return false;
+    for (const auto& mapping:activeMappings())
+        if(!store.isRevoked(mapping.issuer,mapping.endpoint))reserved[count++]=mapping.accessId;
     return openknxAccessControl.processExternalNfcUid(uid,length,reserved,count);
+}
+
+bool HomeKeyModule::nfcIdReserved(uint16_t id)
+{
+    std::unique_lock<std::recursive_mutex> guard(store.mutex,std::try_to_lock);
+    if(!guard.owns_lock())return true;
+    if(homeKeyConfigured && !policyLoaded)return true;
+    if(!homeKeyConfigured)return false;
+    for(const auto& item:activeMappings())
+        if(item.accessId==id&&!store.isRevoked(item.issuer,item.endpoint))return true;
+    return false;
 }
 
 void HomeKeyModule::processInputKo(GroupObject& ko)
@@ -314,6 +329,37 @@ bool HomeKeyModule::processFunctionProperty(uint8_t object, uint8_t property, ui
     std::unique_lock<std::recursive_mutex> guard(store.mutex, std::try_to_lock);
     if (!guard.owns_lock()) { result[0] = HomeKeyOnline::Busy; return true; }
     if (!store.healthy || fatal) { result[0] = HomeKeyOnline::Unavailable; return true; }
+    if(request.command>=5) {
+        if(request.command==5) {
+            if(!knx.progMode()){result[0]=HomeKeyOnline::ProgrammingRequired;return true;}
+            if(!enabled||!openknxNfc.active()){result[0]=HomeKeyOnline::Disabled;return true;}
+            if(!ParamHK_PairingPermitted){result[0]=HomeKeyOnline::NotPermitted;return true;}
+            uint32_t token=esp_random();if(!token)token=1;
+            identification.start(token,millis());++store.generation;
+            result[0]=HomeKeyOnline::Ok;HomeKeyOnline::put32(result+2,token);resultLength=6;return true;
+        }
+        if(request.command==6||request.command==7) {
+            if(request.generation!=identification.session){result[0]=HomeKeyOnline::Stale;return true;}
+            if(request.command==7){identification.cancel();++store.generation;result[0]=HomeKeyOnline::Ok;return true;}
+            if(!enabled||!knx.progMode()||!identification.active(millis())){identification.cancel();result[0]=HomeKeyOnline::Expired;return true;}
+            result[0]=HomeKeyOnline::Ok;result[2]=identification.ready;result[3]=identification.revoked;
+            HomeKeyOnline::put32(result+4,identification.session);
+            std::copy(identification.issuer.begin(),identification.issuer.end(),result+8);
+            std::copy(identification.endpoint.begin(),identification.endpoint.end(),result+16);resultLength=22;return true;
+        }
+        if(request.generation!=store.generation){result[0]=HomeKeyOnline::Stale;return true;}
+        HomeKey::IssuerId iid{};HomeKey::EndpointId eid{};
+        std::copy(data+5,data+13,iid.begin());std::copy(data+13,data+19,eid.begin());
+        if(request.command==10){result[0]=HomeKeyOnline::Ok;result[2]=store.isRevoked(iid,eid);result[3]=store.contains(iid,eid);resultLength=4;return true;}
+        if(!knx.progMode()){result[0]=HomeKeyOnline::ProgrammingRequired;return true;}
+        if (request.command == 8 && !store.isRevoked(iid,eid) && store.revocations.size() >= HomeKeyCredentialStore::MaxRevocations) {
+            result[0] = HomeKeyOnline::RevocationsFull; return true;
+        }
+        identification.cancel();cancelCommissioning();
+        const bool saved=request.command==8 ? store.removeEndpoint(iid,eid) : store.restoreEndpoint(iid,eid);
+        if(saved)etsMappings.erase(std::remove_if(etsMappings.begin(),etsMappings.end(),[&](const auto& m){return m.issuer==iid&&m.endpoint==eid;}),etsMappings.end());
+        result[0]=saved ? HomeKeyOnline::Ok : HomeKeyOnline::Unavailable;endpointDirty=true;return true;
+    }
     uint8_t count = 0;
     for (const auto& issuer : store.entries) count += issuer.endpoints.size();
     if (request.command == 0)
@@ -352,7 +398,7 @@ bool HomeKeyModule::processFunctionPropertyState(uint8_t object, uint8_t propert
 {
     if (object != HomeKeyOnline::Object || property != HomeKeyOnline::Property) return false;
     HomeKeyOnline::Request request;
-    if (!HomeKeyOnline::decode(data, length, request) || (request.command != 0 && request.command != 3))
+    if (!HomeKeyOnline::decode(data, length, request) || (request.command != 0 && request.command != 3 && request.command != 6 && request.command != 10))
     {
         result[0] = HomeKeyOnline::Invalid; result[1] = HomeKeyOnline::Version; resultLength = 2;
         return true;

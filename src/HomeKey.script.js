@@ -1,5 +1,5 @@
 // ETS online button handlers. Only public IDs cross KNX; setup codes stay local.
-var HK_onlineErrors = ["", "Gerät beschäftigt", "Ungültige Anfrage", "ETS-Anwendung zuerst herunterladen", "Home Key nicht gestartet", "Inbetriebnahme gesperrt", "Warteschlange beschäftigt", "Speicher/Krypto nicht verfügbar", "Geräteliste geändert; erneut lesen", "Endpoint nicht gefunden", "Programmiermodus zuerst einschalten"];
+var HK_onlineErrors = ["", "Gerät beschäftigt", "Ungültige Anfrage", "ETS-Anwendung zuerst herunterladen", "Home Key nicht gestartet", "Inbetriebnahme gesperrt", "Warteschlange beschäftigt", "Speicher/Krypto nicht verfügbar", "Geräteliste geändert; erneut lesen", "Endpoint nicht gefunden", "Programmiermodus zuerst einschalten", "Identifizierung abgelaufen", "Sperrliste voll (128 Geräte); keine bestehende Sperre wurde entfernt"];
 var HK_commissioningText = ["bereit / Code gespeichert", "geöffnet", "geschlossen", "nicht erlaubt", "lokalen Setup-Code zuerst setzen", "Worker beschäftigt", "Code konnte nicht gespeichert werden", "angefordert"];
 var HK_authorizationText = ["deaktiviert", "USB-Berechtigungen", "ETS-Tabelle akzeptiert", "ETS-Tabelle ungültig", "Endpoint noch nicht provisioniert", "UID-ID belegt", "Speicher/Krypto nicht verfügbar"];
 
@@ -181,13 +181,13 @@ function HK_deleteAuthorization(row, device, online, progress, context) {
             if (String(fields.issuer.value).toLowerCase() == issuer && String(fields.endpoint.value).toLowerCase() == endpoint)
                 matches.push(fields);
         }
-        var entries = HK_readEndpoints(device, online, progress), found = null;
-        for (var i = 0; i < entries.length; i++)
-            if (entries[i].issuer == issuer && entries[i].endpoint == endpoint) found = entries[i];
+        var status = HK_status(device, online, progress);
+        var identity = [];
+        var hex = issuer + endpoint;
+        for (var n = 0; n < hex.length; n += 2) identity.push(parseInt(hex.substr(n, 2), 16));
         if (progress.isCanceled()) throw new Error("Home Key: Abgebrochen");
-        if (found) HK_requireOk(HK_call(device, online, progress, [4, found.index].concat(found.generation)));
-        // Do not clear ETS permissions unless revocation succeeded or a stable
-        // reader snapshot confirmed that this endpoint is already absent.
+        HK_requireOk(HK_call(device, online, progress, [8].concat(status.slice(8, 12), identity)));
+        // Clear ETS only after the persistent revocation was acknowledged.
         var snapshots = [];
         for (var i = 0; i < matches.length; i++) {
             var f = matches[i];

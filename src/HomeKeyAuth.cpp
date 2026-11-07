@@ -27,7 +27,10 @@ bool HomeKeyModule::processNfcTag(INfcReader& reader, const std::vector<uint8_t>
         }
         xQueueOverwrite(diagnostics, &diagnostic);
     }
-    if (selection==HomeKey::Selection::OrdinaryTag) return false;
+    if (selection==HomeKey::Selection::OrdinaryTag) {
+        std::lock_guard<std::recursive_mutex> guard(store.mutex);
+        return identification.active(millis()); // Ignore ordinary tags during phone identification.
+    }
     if (selection==HomeKey::Selection::HomeKey) {
         authenticate(reader,response);
         return true; // No UID fallback after an authentication attempt.
@@ -47,6 +50,7 @@ void HomeKeyModule::authenticate(INfcReader& reader, const std::vector<uint8_t>&
 {
     std::lock_guard<std::recursive_mutex> guard(store.mutex);
     Event event;
+    const uint32_t identifyToken=identification.active(millis()) ? identification.session : 0;
     if (!store.healthy || store.identity.private_key.size() != 32 || !enabled)
     {
         event.reason = !store.healthy ? "Home Key credential storage unhealthy"
@@ -55,6 +59,10 @@ void HomeKeyModule::authenticate(INfcReader& reader, const std::vector<uint8_t>&
             : "Home Key module disabled during authentication";
         event.generation = store.generation; enqueue(event); return;
     }
+    bool revokedOutcome = false;
+    bool identified = false;
+    { // DDK owns pointers into the store until profile/session destruction.
+    HomeKeyCredentialStore::Session storeSession(store);
     bool exchangeFailed = false;
     auto channel = std::make_shared<ddk::NfcChannel>([this, &reader, &exchangeFailed](std::vector<uint8_t>& send, std::vector<uint8_t>& receive)
         {
@@ -78,7 +86,9 @@ void HomeKeyModule::authenticate(INfcReader& reader, const std::vector<uint8_t>&
             {
                 std::copy(outcome.issuer->id.begin(), outcome.issuer->id.end(), event.issuer.begin());
                 std::copy(outcome.endpoint->id.begin(), outcome.endpoint->id.end(), event.endpoint.begin());
-                store.save(); // Persist updated endpoint keys before any authorization event.
+                identified = true;
+                revokedOutcome = store.isRevoked(event.issuer,event.endpoint);
+                if (!revokedOutcome) store.save();
                 if (!store.healthy)
                     event.reason = "authenticated credential could not be saved";
                 else if (!store.contains(event.issuer, event.endpoint))
@@ -93,11 +103,16 @@ void HomeKeyModule::authenticate(INfcReader& reader, const std::vector<uint8_t>&
                 : "Home Key authentication interrupted or step limit reached";
         // Authentication and ETS authorization are separate. Keep the identity
         // in the event so the main loop can diagnose the missing permission.
-        const bool authorized = event.kind == EventKind::Authenticated &&
+        const bool authorized = !identifyToken && event.kind == EventKind::Authenticated &&
             lookupAccessId(event.issuer, event.endpoint) != HomeKey::InvalidId;
         profile->control_flow(session, authorized ? 1 : 0, 0);
     }
+    }
+    // Erase recreated revoked keys only after all DDK references are gone.
+    if (revokedOutcome) store.save();
+    if (identified && identifyToken && store.healthy)
+        identification.capture(identifyToken,millis(),event.issuer,event.endpoint,revokedOutcome);
     event.generation = store.generation;
-    enqueue(event);
+    if(!identifyToken)enqueue(event); // Identification never executes or queues an access action.
 }
 #endif

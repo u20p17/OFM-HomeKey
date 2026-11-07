@@ -64,8 +64,9 @@ bool HomeKeyCredentialStore::begin()
         return false;
     Codec c;
     c.data.resize(size);
-    if (nvs_get_blob(handle, "state", c.data.data(), &size) != ESP_OK || c.get(4) != 0x31534b48)
-        return false;
+    if (nvs_get_blob(handle, "state", c.data.data(), &size) != ESP_OK) return false;
+    const uint32_t schema=c.get(4);
+    if (schema!=0x31534b48 && schema!=0x32534b48) return false;
     identity.private_key = c.getBytes(32);
     identity.public_key = c.getBytes(65);
     identity.public_key_x = c.getBytes(32);
@@ -110,6 +111,18 @@ bool HomeKeyCredentialStore::begin()
         mapping.accessId = c.get(2);
         if (!contains(mapping.issuer, mapping.endpoint) || !HomeKey::bind(mappings, mapping)) return false;
     }
+    if (schema==0x32534b48) {
+        const size_t count=c.get(2);
+        if(count>MaxRevocations) return false;
+        for(size_t i=0;i<count&&c.valid;++i) {
+            Revocation item{};
+            for(auto& byte:item.issuer)byte=c.get(1);
+            for(auto& byte:item.endpoint)byte=c.get(1);
+            if(isRevoked(item.issuer,item.endpoint))return false;
+            revocations.push_back(item);
+        }
+    }
+    pruneRevoked();
     bool empty = identity.private_key.empty() && identity.public_key.empty() && identity.public_key_x.empty() && identity.group_identifier.empty() && identity.sub_identifier.empty();
     bool complete = identity.private_key.size() == 32 && identity.public_key.size() == 65 && identity.public_key_x.size() == 32 &&
                     identity.group_identifier.size() == 8 && identity.sub_identifier.size() == 8;
@@ -122,8 +135,9 @@ void HomeKeyCredentialStore::save()
     std::lock_guard<std::recursive_mutex> guard(mutex);
     ++generation; // Invalidates queued events even if persistence subsequently fails.
     if (!healthy) return;
+    if (!deferRevokedPruning) pruneRevoked();
     Codec c;
-    c.put(0x31534b48, 4);
+    c.put(0x32534b48, 4);
     for (const auto* bytes : {&identity.private_key, &identity.public_key, &identity.public_key_x, &identity.group_identifier, &identity.sub_identifier})
         c.putBytes(*bytes);
     if (entries.size() > MaxIssuers || mappings.size() > HomeKey::MaxMappings) { healthy = false; return; }
@@ -131,12 +145,23 @@ void HomeKeyCredentialStore::save()
     size_t total = 0;
     for (const auto& issuer : entries)
     {
-        total += issuer.endpoints.size();
+        HomeKey::IssuerId iid{};
+        if (issuer.id.size() != iid.size()) { healthy = false; return; }
+        std::copy(issuer.id.begin(), issuer.id.end(), iid.begin());
+        const auto blocked = [&](const auto& endpoint) {
+            HomeKey::EndpointId eid{};
+            if (endpoint.id.size() != eid.size()) return true;
+            std::copy(endpoint.id.begin(), endpoint.id.end(), eid.begin());
+            return isRevoked(iid, eid);
+        };
+        const size_t count = std::count_if(issuer.endpoints.begin(), issuer.endpoints.end(), [&](const auto& endpoint) { return !blocked(endpoint); });
+        total += count;
         if (total > MaxEndpoints) { healthy = false; return; }
         c.putBytes(issuer.id); c.putBytes(issuer.public_key); c.putBytes(issuer.public_key_x);
-        c.put(issuer.endpoints.size(), 1);
+        c.put(count, 1);
         for (const auto& endpoint : issuer.endpoints)
         {
+            if (blocked(endpoint)) continue;
             c.putBytes(endpoint.id); c.putBytes(endpoint.public_key); c.putBytes(endpoint.public_key_x); c.putBytes(endpoint.persistent_key);
             c.put(endpoint.used_at, 4); c.put(endpoint.counter, 1); c.put(static_cast<uint8_t>(endpoint.key_type), 1);
         }
@@ -151,12 +176,19 @@ void HomeKeyCredentialStore::save()
         for (auto byte : mapping.endpoint) c.put(byte, 1);
         c.put(mapping.accessId, 2);
     }
+    if(revocations.size()>MaxRevocations){healthy=false;return;}
+    c.put(revocations.size(),2);
+    for(const auto& item:revocations) {
+        for(auto byte:item.issuer)c.put(byte,1);
+        for(auto byte:item.endpoint)c.put(byte,1);
+    }
     healthy = c.valid && c.data.size() <= MaxBlob && nvs_set_blob(handle, "state", c.data.data(), c.data.size()) == ESP_OK && nvs_commit(handle) == ESP_OK;
     if (!healthy) ESP_LOGE("HomeKey", "Credential persistence failed; authentication disabled");
 }
 
 bool HomeKeyCredentialStore::contains(const HomeKey::IssuerId& issuerId, const HomeKey::EndpointId& endpointId) const
 {
+    if(isRevoked(issuerId,endpointId))return false;
     for (const auto& issuer : entries)
         if (issuer.id.size() == issuerId.size() && std::equal(issuer.id.begin(), issuer.id.end(), issuerId.begin()))
             for (const auto& endpoint : issuer.endpoints)
@@ -180,20 +212,41 @@ void HomeKeyCredentialStore::provision_identity(const ddk::ReaderIdentity& value
     identity = value;
 }
 
-bool HomeKeyCredentialStore::removeEndpoint(const HomeKey::IssuerId& issuerId, const HomeKey::EndpointId& endpointId)
+bool HomeKeyCredentialStore::isRevoked(const HomeKey::IssuerId& issuer, const HomeKey::EndpointId& endpoint) const
+{
+    return std::any_of(revocations.begin(),revocations.end(),[&](const auto& item){return item.issuer==issuer&&item.endpoint==endpoint;});
+}
+void HomeKeyCredentialStore::pruneRevoked()
+{
+    for(auto& issuer:entries) {
+        if(issuer.id.size()!=8)continue;
+        HomeKey::IssuerId iid{};std::copy(issuer.id.begin(),issuer.id.end(),iid.begin());
+        issuer.endpoints.erase(std::remove_if(issuer.endpoints.begin(),issuer.endpoints.end(),[&](auto& endpoint){
+            if(endpoint.id.size()!=6)return false;
+            HomeKey::EndpointId eid{};std::copy(endpoint.id.begin(),endpoint.id.end(),eid.begin());
+            if(!isRevoked(iid,eid))return false;
+            wipe(endpoint.persistent_key);wipe(endpoint.public_key);wipe(endpoint.public_key_x);return true;
+        }),issuer.endpoints.end());
+    }
+    mappings.erase(std::remove_if(mappings.begin(),mappings.end(),[&](const auto& item){return isRevoked(item.issuer,item.endpoint);}),mappings.end());
+}
+bool HomeKeyCredentialStore::removeEndpoint(const HomeKey::IssuerId& issuer, const HomeKey::EndpointId& endpoint)
 {
     std::lock_guard<std::recursive_mutex> guard(mutex);
-    if (!healthy || !contains(issuerId, endpointId)) return false;
-    for (auto& issuer : entries)
-    {
-        if (issuer.id.size() != issuerId.size() || !std::equal(issuer.id.begin(), issuer.id.end(), issuerId.begin())) continue;
-        issuer.endpoints.erase(std::remove_if(issuer.endpoints.begin(), issuer.endpoints.end(), [&](const auto& endpoint)
-        {
-            return endpoint.id.size() == endpointId.size() && std::equal(endpoint.id.begin(), endpoint.id.end(), endpointId.begin());
-        }), issuer.endpoints.end());
+    if(!healthy)return false;
+    if(!isRevoked(issuer,endpoint)) {
+        if(revocations.size()>=MaxRevocations)return false; // Never evict a revocation silently.
+        revocations.push_back({issuer,endpoint});
     }
-    save(); // Prunes local mappings and invalidates every queued authorization event.
+    save(); // Atomically persist revocation and remove keys/mappings; idempotent even when absent.
     return healthy;
+}
+bool HomeKeyCredentialStore::restoreEndpoint(const HomeKey::IssuerId& issuer, const HomeKey::EndpointId& endpoint)
+{
+    std::lock_guard<std::recursive_mutex> guard(mutex);
+    if(!healthy)return false;
+    revocations.erase(std::remove_if(revocations.begin(),revocations.end(),[&](const auto& item){return item.issuer==issuer&&item.endpoint==endpoint;}),revocations.end());
+    save();return healthy;
 }
 
 bool HomeKeyCredentialStore::eraseReaderKey()
@@ -216,8 +269,8 @@ bool HomeKeyCredentialStore::clear()
     for (auto& issuer : entries)
         for (auto& endpoint : issuer.endpoints) wipe(endpoint.persistent_key);
     identity = {}; entries.clear(); mappings.clear();
-    healthy = handle && nvs_erase_all(handle) == ESP_OK && nvs_commit(handle) == ESP_OK;
-    if (healthy) save();
+    healthy = handle != 0;
+    if (healthy) save(); // One NVS commit; never erase revocations in a separate transaction.
     return healthy;
 }
 #endif

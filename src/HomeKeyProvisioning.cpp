@@ -83,6 +83,7 @@ namespace
             std::vector<uint8_t> data(input.pack_size()); input.pack(data.data());
             std::lock_guard<std::recursive_mutex> guard(module.store.mutex);
             if (!module.store.healthy || (value == 2 && !module.pairingAllowed())) return false;
+            HomeKeyCredentialStore::Session storeSession(module.store);
             HK_HomeKit context(module.store, [this]() { module.store.eraseReaderKey(); }, data);
             auto response = context.processResult();
             module.store.save();

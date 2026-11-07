@@ -3,6 +3,7 @@
 #include "OpenKNX.h"
 #include "CredentialStore.h"
 #include "HomeKeyPolicy.h"
+#include "HomeKeyIdentification.h"
 #include "NfcReaderService.h"
 #include <atomic>
 #include <memory>
@@ -34,6 +35,7 @@ class HomeKeyModule : public OpenKNX::Module, public NfcReaderExtension
     bool nfcReady() const override { return policyLoaded && (!enabled || provisioningReady); }
     bool prepareNfc(std::array<uint8_t,18>&, uint32_t& token) override;
     bool processNfcTag(INfcReader&, const std::vector<uint8_t>& uid, uint8_t sak) override;
+    bool nfcIdReserved(uint16_t id) override;
     bool authorizeNfcUid(const uint8_t*, uint8_t length, uint32_t token) override;
   private:
     friend class HomeKeyProvisioning;
@@ -59,6 +61,7 @@ class HomeKeyModule : public OpenKNX::Module, public NfcReaderExtension
         HomeKey::EndpointId endpoint{};
         uint32_t generation = 0;
     };
+    HomeKeyIdentification identification;
     void showMemory();
     void authenticate(INfcReader&, const std::vector<uint8_t>& selectResponse);
     void enqueue(const Event&);
@@ -78,6 +81,7 @@ class HomeKeyModule : public OpenKNX::Module, public NfcReaderExtension
     const std::vector<HomeKey::Mapping>& activeMappings() const { return etsAuthorization ? etsMappings : store.mappings; }
     uint16_t lookupAccessId(const HomeKey::IssuerId& issuer, const HomeKey::EndpointId& endpoint) const
     {
+        if(store.isRevoked(issuer,endpoint))return HomeKey::InvalidId;
         return policyLoaded ? HomeKey::authorizedId(etsAuthorization, etsTableValid, store.mappings, etsMappings, issuer, endpoint) : HomeKey::InvalidId;
     }
     void updateStatus();

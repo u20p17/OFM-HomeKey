@@ -21,6 +21,14 @@ int main() {
     assert(!decode(request, 5, r));
     request[1] = 64; assert(!decode(request, 6, r));
     request[0] = 5; request[1] = 0; assert(!decode(request, 6, r));
+    uint8_t extended[19] = {};
+    for (uint8_t command=5;command<=10;++command) {
+        extended[0]=command;
+        const size_t length=command==5?1:command<=7?5:19;
+        assert(decode(extended,length,r) && r.command==command);
+        assert(!decode(extended,length-1,r)); assert(!decode(extended,length+1,r));
+    }
+    extended[0]=11;assert(!decode(extended,1,r));
     uint8_t out[24]; std::memset(out, 0xff, sizeof(out));
     assert(status(out, true, false, true, 7, 2, 64, 0x81234567) == 12);
     assert(out[0] == Ok && out[1] == Version && out[2] == 1 && out[3] == 0 && out[4] == 1);

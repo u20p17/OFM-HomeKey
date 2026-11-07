@@ -119,7 +119,7 @@ a rejected/canceled request is reported and an accepted request is closed on
 failure. The permit and stored private setup code remain mandatory.
 
 After provisioning, select `Berechtigungen aus ETS-Tabelle` = Yes and press
-`Provisionierte Geräte-IDs importieren`. The script reads a consistent snapshot
+`HomeKey-Geräte aus Reader einlesen` under **Allgemein → NFC-Scanner**. The script reads a consistent snapshot
 of public issuer/endpoint IDs into completely empty rows of the 16-row table.
 It preserves populated/partial rows and existing rights, deduplicates full IDs,
 and aborts before writing if there is insufficient space or the snapshot changes
@@ -407,23 +407,40 @@ authorize access. Import preserves existing descriptions and treats a named
 incomplete row as occupied. Description storage follows the original 16 × 33
 byte authorization rows, whose ID/action layout remains unchanged.
 
-Each row has `Gerät löschen (Prog-Modus)`. Turn on programming mode and click
-that row's button to revoke its endpoint persistently in the reader, close any
-open commissioning window and invalidate queued authorization events. Reader
-identity, issuer/controller pairing and other endpoints remain intact. Local
-mappings for the endpoint are pruned. Matching ETS rows and their descriptions
-are cleared after the reader confirms deletion; save the ETS project and
-redownload the parameters. An already absent endpoint can be cleared from ETS
-without deleting another device. Busy/stale lists, missing programming mode and
-persistence failures preserve the ETS rows. A failed ETS parameter write after
-reader revocation restores the row values and reports that cleanup must be
-retried; it does not restore the reader credential.
+OAM-AccessControl application 11.7 uses a single editor under **Allgemein →
+NFC-Scanner** instead of sixteen permission tabs. Select a HomeKey slot, edit
+its description, Tag ID and enabled flag, then check and download parameters.
+Existing parameter IDs and memory offsets remain unchanged. The overview joins
+live ETS drafts/action assignments with a timestamped, paginated UID snapshot.
+It flags duplicate active IDs/identities and action references without a credential.
+Names are manually assigned: authenticated identification selects the phone's
+endpoint but does not supply a reliable personal Apple device name.
 
-Use the regenerated application/header together and regenerate the signed
-knxprod with OpenKNXproducer on the ETS machine. This changes the development
-application version to 11.3 and requires a new ETS application download. The
-reader's NVS credential schema is unchanged, so this update does not itself
-reset provisioned endpoints.
+`Gerät löschen und Speicherplatz leeren` requires programming mode. It atomically
+removes the selected endpoint's public/persistent keys and stores its identity in
+a separate revocation list (128 entries, no silent eviction). Other endpoints,
+issuer/controller pairing and the reader identity remain intact. All matching ETS
+rows are cleared only after successful persistence. Busy/stale responses, missing
+programming mode and flash errors leave ETS rows intact. Deletion is idempotent,
+including for an endpoint already absent from the reader. Action assignments are
+retained and marked unassigned; reusing the Tag ID also reuses those assignments.
+
+Revocations survive reboot, stale ETS downloads, normal resets and reprovisioning.
+A Wallet entry may remain visible: local deletion does not remove it from Apple
+Home/Wallet. Explicit `Gesperrtes Gerät erneut zulassen` removes the revocation;
+it does not enable an ETS permission. A newly generated endpoint identity is a
+new credential and must be explicitly authorized. An iPhone and Watch are distinct
+endpoints and are not implicitly deleted together.
+
+The NVS schema reads old version 1 blobs and writes version 2 with revocations
+appended in the same NVS commit. It preserves existing credentials on upgrade.
+Older firmware does not understand version 2; do not downgrade without a planned
+credential migration. DDK saves during a session serialize only non-revoked keys;
+in-memory endpoint erasure waits until DDK's references are no longer in use.
+
+Generate the signed knxprod on the ETS machine, use it with the matching firmware
+and download the updated application. Native tests do not replace an ETS/device
+commissioning test.
 
 ## ETS online protocol and script tests
 
@@ -491,3 +508,24 @@ entirely. Set HomeKey to Nein in ETS for those images; an enabled HomeKey policy
 is rejected rather than silently treated as ordinary UID authorization.
 The UID-only IP profiles reuse stored or build-configured Wi-Fi credentials.
 Physical PN7161/Elechouse and iPhone/Watch tests remain required.
+
+### Unified NFC management protocol additions (0.4.4)
+
+Protocol version 1 gains additive commands:
+
+- `5`: start a 60-second authenticated identification session (programming mode,
+  HomeKey enabled and commissioning permission required). Reply: result/version,
+  random token BE32. No normal UID/HomeKey access actions run during this session.
+- `6,tokenBE32`: poll. Reply: result/version, ready, revoked, token BE32,
+  issuer (8), endpoint (6). Only a completed authentication produces an identity.
+- `7,tokenBE32`: cancel. Timeout, parameter download and cancellation invalidate
+  the session. A finished result suppresses access until cancellation or timeout.
+- `8,generationBE32,issuer8,endpoint6`: persistent identity revocation, even if
+  the endpoint is absent. Programming mode required.
+- `9,generationBE32,issuer8,endpoint6`: explicit restoration; programming mode
+  required. Does not restore any permission mapping.
+- `10,generationBE32,issuer8,endpoint6`: read revocation/provisioning state;
+  reply: result/version, revoked, present.
+
+Results 11/12 mean expired identification/full revocation list. Read-only state
+requests accept only commands 0, 3, 6 and 10. Public IDs, never secret keys, cross KNX.

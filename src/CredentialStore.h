@@ -17,6 +17,22 @@ class HomeKeyCredentialStore : public ddk::CredentialStore
     bool eraseReaderKey();
     bool removeEndpoint(const HomeKey::IssuerId&, const HomeKey::EndpointId&);
     bool clear();
+    bool isRevoked(const HomeKey::IssuerId&, const HomeKey::EndpointId&) const;
+    bool restoreEndpoint(const HomeKey::IssuerId&, const HomeKey::EndpointId&);
+    void pruneRevoked();
+    // DDK can save while a profile still holds Endpoint pointers. Persist only
+    // non-revoked keys, but defer vector erasure until those references expire.
+    class Session {
+      public:
+        explicit Session(HomeKeyCredentialStore& value) : store(value) { store.deferRevokedPruning = true; }
+        ~Session() { store.deferRevokedPruning = false; store.pruneRevoked(); }
+        Session(const Session&) = delete;
+      private:
+        HomeKeyCredentialStore& store;
+    };
+    static constexpr size_t MaxRevocations = 128;
+    struct Revocation { HomeKey::IssuerId issuer; HomeKey::EndpointId endpoint; };
+    std::vector<Revocation> revocations;
     bool contains(const HomeKey::IssuerId&, const HomeKey::EndpointId&) const;
     std::recursive_mutex mutex;
     ddk::ReaderIdentity identity;
@@ -25,5 +41,6 @@ class HomeKeyCredentialStore : public ddk::CredentialStore
     uint32_t generation = 0;
     bool healthy = false;
   private:
+    bool deferRevokedPruning = false;
     nvs_handle_t handle = 0;
 };

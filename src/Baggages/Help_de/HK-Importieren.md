@@ -1,4 +1,4 @@
-### Provisionierte Geräte-IDs importieren
+### HomeKey-Geräte aus Reader einlesen
 
 Mit dieser Schaltfläche werden die Kennungen der bereits gekoppelten Geräte über die ETS-KNX-Schnittstelle ausgelesen und in vollständig leere Einträge der Berechtigungstabelle übernommen.
 

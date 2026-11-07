@@ -1,14 +1,26 @@
-# Gerät löschen
+# HomeKey-Gerät löschen
 
-Programmiermodus am Reader einschalten, dann bei der gewünschten Berechtigung
-**Gerät löschen (Prog-Modus)** wählen. Der Online-Befehl löscht den Endpoint
-und lokale Zuordnungen dauerhaft aus dem Reader und schließt das aktive
-Pairing-Fenster. Andere Geräte und der
-HomeKit-Controller bleiben bestehen. Passende Zeilen einschließlich ihrer
-Bezeichnungen werden im ETS-Projekt geleert. Danach das Projekt speichern und
-die Parameter herunterladen.
+Unter **Allgemein → NFC-Scanner**, Zugangstyp **Apple HomeKey**, den gewünschten
+Speicherplatz wählen. Am Reader den Programmiermodus einschalten und **Gerät
+löschen und Speicherplatz leeren** ausführen.
 
-Bei einer geänderten Geräteliste, fehlendem Programmiermodus oder einem
-Speicherfehler bleiben die ETS-Zeilen erhalten. Das Löschen setzt weder den
-Reader noch andere Home-Key-Geräte zurück. Ein bereits aus dem Reader
-entferntes Gerät kann mit demselben Button aus ETS bereinigt werden.
+Die Geräteschlüssel (öffentlicher Schlüssel und persistenter Authentifizierungsschlüssel)
+und lokale Berechtigungen dieses Endpoints werden entfernt. Eine persistente
+Sperre für Issuer-ID + Endpoint-ID verhindert, dass erneute Provisionierung,
+Neustart oder ein alter ETS-Download den Zugang wiederherstellen. Andere Geräte,
+der gemeinsame Issuer und die Reader-Identität bleiben erhalten. Ein iPhone und
+eine Watch sind getrennte Endpoints; sie werden getrennt verwaltet.
+
+Erst nach Bestätigung des Readers werden alle passenden ETS-Plätze einschließlich
+Bezeichnung geleert. Aktionszuordnungen bleiben bestehen: Wird dieselbe NFC-Tag-ID
+später neu vergeben, gelten diese Aktionen für den neuen Zugang.
+
+Der Schlüssel kann weiterhin in Apple Wallet sichtbar sein. Lokales Löschen
+entfernt diesen Wallet-Eintrag nicht. Zum Wiederverwenden das gekoppelte Gerät
+über **Anlernen / Gerät durch Scan identifizieren** auswählen, danach ausdrücklich
+**Gesperrtes Gerät erneut zulassen**. Berechtigung und Aktionen neu prüfen und
+Parameter herunterladen. Die Sperre wird nicht durch normalen Import aufgehoben.
+
+Bis zu 128 gesperrte Identitäten werden unabhängig von den 16 ETS-Plätzen
+aufbewahrt. Eine volle Sperrliste wird gemeldet; bestehende Sperren werden nicht
+verdrängt. Fehler und fehlender Programmiermodus lassen ETS-Plätze unverändert.

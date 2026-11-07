@@ -1,4 +1,5 @@
 #include "CredentialStore.h"
+#include "HomeKeyIdentification.h"
 #include <cassert>
 #include <cstring>
 #include <iostream>
@@ -243,8 +244,31 @@ int main()
     assert(!deletedBoot.contains(mapping.issuer, mapping.endpoint));
     assert(deletedBoot.contains(secondMapping.issuer, secondMapping.endpoint));
     deletionGeneration = deletion.generation;
-    assert(!deletion.removeEndpoint(mapping.issuer, mapping.endpoint));
-    assert(deletion.generation == deletionGeneration); // Missing IDs cannot mutate the store.
+    assert(deletion.removeEndpoint(mapping.issuer, mapping.endpoint));
+    assert(deletion.generation != deletionGeneration); // Repeated deletion is a persistent revocation.
+    assert(deletion.isRevoked(mapping.issuer, mapping.endpoint));
+    {
+        HomeKeyCredentialStore::Session session(deletion);
+        deletion.entries.front().endpoints.push_back(endpoint); // HAP/NFC may reprovision a deleted endpoint.
+        auto* referenced = &deletion.entries.front().endpoints.back();
+        assert(!deletion.contains(mapping.issuer, mapping.endpoint));
+        deletion.save();
+        assert(referenced == &deletion.entries.front().endpoints.back() && referenced->id == endpoint.id);
+        HomeKeyCredentialStore concurrentBoot; assert(concurrentBoot.begin());
+        assert(!concurrentBoot.contains(mapping.issuer, mapping.endpoint));
+        assert(concurrentBoot.entries.front().endpoints.size() == 1); // Revoked key was never persisted.
+    }
+    assert(deletion.entries.front().endpoints.size() == 1);
+    HomeKeyCredentialStore revokedBoot; assert(revokedBoot.begin());
+    assert(revokedBoot.isRevoked(mapping.issuer, mapping.endpoint));
+    assert(revokedBoot.clear());
+    HomeKeyCredentialStore clearedBoot; assert(clearedBoot.begin());
+    assert(clearedBoot.isRevoked(mapping.issuer, mapping.endpoint));
+    assert(clearedBoot.restoreEndpoint(mapping.issuer, mapping.endpoint));
+    HomeKeyCredentialStore restoredBoot; assert(restoredBoot.begin());
+    assert(!restoredBoot.isRevoked(mapping.issuer, mapping.endpoint));
+    deletion.save(); // Restore the remaining device before testing a failed commit.
+
     commitFails = true;
     assert(!deletion.removeEndpoint(secondMapping.issuer, secondMapping.endpoint));
     assert(!deletion.healthy && deletion.generation != deletionGeneration);
@@ -278,5 +302,34 @@ int main()
     commitFails = true; store.save(); assert(!store.healthy);
     commitFails = false; assert(store.clear() && store.healthy);
     HomeKeyCredentialStore reset; assert(reset.begin() && reset.entries.empty() && reset.mappings.empty() && reset.identity.private_key.empty());
+    // Old schema migrates losslessly on save; new revocations are bounded and never evicted.
+    auto migrated = flash; assert(migrated.size() > 6);
+    migrated[3] = 0x31; migrated.resize(migrated.size()-2); flash = migrated;
+    HomeKeyCredentialStore oldSchema; assert(oldSchema.begin()); oldSchema.save();
+    assert(flash[3] == 0x32);
+    HomeKeyCredentialStore bounded; assert(bounded.begin());
+    for (unsigned i=0; i<HomeKeyCredentialStore::MaxRevocations; ++i) {
+        EndpointId id{}; id[0]=i;
+        assert(bounded.removeEndpoint(mapping.issuer,id));
+    }
+    EndpointId overflow{}; overflow[0]=200;
+    assert(!bounded.removeEndpoint(mapping.issuer,overflow) && bounded.healthy);
+    HomeKeyCredentialStore fullBoot; assert(fullBoot.begin());
+    assert(fullBoot.revocations.size()==HomeKeyCredentialStore::MaxRevocations);
+    assert(fullBoot.isRevoked(mapping.issuer,EndpointId{}));
+    assert(fullBoot.removeEndpoint(mapping.issuer,EndpointId{})); // Idempotent at capacity.
+
+    HomeKeyIdentification identify;
+    assert(!identify.active(0)); identify.start(7,0xfffffff0);
+    assert(identify.active(0));
+    assert(!identify.capture(6,0,mapping.issuer,mapping.endpoint,false));
+    assert(identify.capture(7,0,mapping.issuer,mapping.endpoint,true));
+    assert(identify.ready && identify.revoked && identify.active(0));
+    assert(!identify.capture(7,1,mapping.issuer,unknown,false));
+    assert(!identify.active(uint32_t(0xfffffff0+60000)));
+    identify.start(8,100); assert(!identify.ready);
+    identify.cancel(); assert(!identify.active(101));
+    assert(!identify.capture(8,101,mapping.issuer,mapping.endpoint,false));
+
     std::cout << "Home Key ETS policy, commissioning, selection, mapping, persistence and revocation tests passed\n";
 }

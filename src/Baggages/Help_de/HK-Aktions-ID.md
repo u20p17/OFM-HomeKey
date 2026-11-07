@@ -5,7 +5,7 @@ Die NFC-Tag-ID (0–1499) entspricht der Spalte **Tag** in der NFC-Zuordnungstab
 Beispiel für eine Türöffnung:
 
 1. Das Gerät in Apple Home hinzufügen und Home Key provisionieren. Falls die Geräte-ID fehlt, iPhone oder Watch einmal am Reader präsentieren und erneut importieren.
-2. **Provisionierte Geräte-IDs importieren**, die passende Berechtigung benennen und aktivieren.
+2. **HomeKey-Geräte aus Reader einlesen**, die passende Berechtigung benennen und aktivieren.
 3. Dieser Berechtigung eine freie **NFC-Tag-ID**, zum Beispiel **100**, geben.
 4. Unter **Zuweisung von NFC-Tags zu Aktionen** eine Zeile **Tag 100 → Aktion 1** anlegen.
 5. **Aktion 1** mit dem gewünschten Verhalten konfigurieren und ihr Schaltobjekt mit der Gruppenadresse des KNX-Türaktors verbinden.

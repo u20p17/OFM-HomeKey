@@ -6,7 +6,7 @@ wird ausschließlich anhand von Issuer-ID, Endpoint-ID und NFC-Tag-ID geprüft.
 Importierte IDs und bestehende Bezeichnungen werden nicht überschrieben.
 
 Der persönliche iPhone-Name wird vom verwendeten Pairing-/HomeKey-Protokoll
-nicht zuverlässig bereitgestellt. Über **Anlernen / Gerät durch Scan identifizieren**
+nicht zuverlässig bereitgestellt. Über **Gerät scannen**
 kann das physische Gerät einem Speicherplatz zugeordnet werden; die Bezeichnung
 wird anschließend manuell vergeben. Während dieser Identifizierung löst ein Scan
 keine Zutrittsaktion aus.

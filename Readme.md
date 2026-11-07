@@ -119,7 +119,7 @@ a rejected/canceled request is reported and an accepted request is closed on
 failure. The permit and stored private setup code remain mandatory.
 
 After provisioning, select `Berechtigungen aus ETS-Tabelle` = Yes and press
-`HomeKey-Geräte aus Reader einlesen` under **Allgemein → NFC-Scanner**. The script reads a consistent snapshot
+`Geräte einlesen` under **Allgemein → NFC-Scanner**. The script reads a consistent snapshot
 of public issuer/endpoint IDs into completely empty rows of the 16-row table.
 It preserves populated/partial rows and existing rights, deduplicates full IDs,
 and aborts before writing if there is insufficient space or the snapshot changes
@@ -408,7 +408,10 @@ incomplete row as occupied. Description storage follows the original 16 × 33
 byte authorization rows, whose ID/action layout remains unchanged.
 
 OAM-AccessControl application 11.7 uses a single editor under **Allgemein →
-NFC-Scanner** instead of sixteen permission tabs. Select a HomeKey slot, edit
+NFC-Scanner** instead of sixteen permission tabs. UID and HomeKey share the
+`Vorgang` dropdown: anlernen shows scanning/restoration, anlegen shows import
+and manual IDs, ändern shows permission editing, and löschen shows read-only
+confirmation. Select a HomeKey slot, edit
 its description, Tag ID and enabled flag, then check and download parameters.
 Existing parameter IDs and memory offsets remain unchanged. The overview joins
 live ETS drafts/action assignments with a timestamped, paginated UID snapshot.
@@ -416,7 +419,7 @@ It flags duplicate active IDs/identities and action references without a credent
 Names are manually assigned: authenticated identification selects the phone's
 endpoint but does not supply a reliable personal Apple device name.
 
-`Gerät löschen und Speicherplatz leeren` requires programming mode. It atomically
+`Gerät löschen` requires programming mode. It atomically
 removes the selected endpoint's public/persistent keys and stores its identity in
 a separate revocation list (128 entries, no silent eviction). Other endpoints,
 issuer/controller pairing and the reader identity remain intact. All matching ETS
@@ -427,7 +430,7 @@ retained and marked unassigned; reusing the Tag ID also reuses those assignments
 
 Revocations survive reboot, stale ETS downloads, normal resets and reprovisioning.
 A Wallet entry may remain visible: local deletion does not remove it from Apple
-Home/Wallet. Explicit `Gesperrtes Gerät erneut zulassen` removes the revocation;
+Home/Wallet. Explicit `Erneut zulassen` removes the revocation;
 it does not enable an ETS permission. A newly generated endpoint identity is a
 new credential and must be explicitly authorized. An iPhone and Watch are distinct
 endpoints and are not implicitly deleted together.

@@ -1,7 +1,7 @@
 # HomeKey-Gerät löschen
 
 Unter **Allgemein → NFC-Scanner**, Zugangstyp **Apple HomeKey**, den gewünschten
-Speicherplatz wählen. Am Reader den Programmiermodus einschalten und **Gerät
+Speicherplatz und **Vorgang → löschen** wählen. Am Reader den Programmiermodus einschalten und **Gerät
 löschen und Speicherplatz leeren** ausführen.
 
 Die Geräteschlüssel (öffentlicher Schlüssel und persistenter Authentifizierungsschlüssel)
@@ -17,8 +17,8 @@ später neu vergeben, gelten diese Aktionen für den neuen Zugang.
 
 Der Schlüssel kann weiterhin in Apple Wallet sichtbar sein. Lokales Löschen
 entfernt diesen Wallet-Eintrag nicht. Zum Wiederverwenden das gekoppelte Gerät
-über **Anlernen / Gerät durch Scan identifizieren** auswählen, danach ausdrücklich
-**Gesperrtes Gerät erneut zulassen**. Berechtigung und Aktionen neu prüfen und
+unter **Vorgang → anlernen** über **Gerät scannen** auswählen, danach ausdrücklich
+**Erneut zulassen**. Berechtigung und Aktionen neu prüfen und
 Parameter herunterladen. Die Sperre wird nicht durch normalen Import aufgehoben.
 
 Bis zu 128 gesperrte Identitäten werden unabhängig von den 16 ETS-Plätzen

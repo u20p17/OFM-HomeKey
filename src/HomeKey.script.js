@@ -170,11 +170,28 @@ function HK_authorizationFields(device, row) {
     return fields;
 }
 function HK_deleteAuthorization(row, device, online, progress, context) {
+    var target = HK_authorizationFields(device, row);
+    var issuer = String(target.issuer.value).toLowerCase(), endpoint = String(target.endpoint.value).toLowerCase();
+    if (!/^[0-9a-f]{16}$/.test(issuer) || !/^[0-9a-f]{12}$/.test(endpoint)) {
+        // An incomplete ETS draft has no safely addressable device to revoke.
+        // Clear only the selected slot, never infer an identity from its Tag-ID
+        // or touch another slot. A parameter download applies the permission
+        // removal to the reader; no device keys/revocation list are changed here.
+        if (progress.isCanceled()) throw new Error("Home Key: Abgebrochen");
+        var old = [target.enabled.value, target.issuer.value, target.endpoint.value, target.action.value, target.description.value];
+        try {
+            target.enabled.value = 0; target.issuer.value = ""; target.endpoint.value = "";
+            target.action.value = 0; target.description.value = "";
+        } catch (error) {
+            try { target.enabled.value = old[0]; target.issuer.value = old[1]; target.endpoint.value = old[2];
+                target.action.value = old[3]; target.description.value = old[4]; } catch (ignored) { }
+            throw new Error("Home Key: ETS-Platz konnte nicht geleert werden: " + error.message);
+        }
+        var text = "ETS-Platz " + row + " geleert. Kein Gerät im Reader gelöscht oder gesperrt (Geräte-ID unvollständig). Parameter herunterladen, um die Berechtigung im Gerät zu entfernen. Aktionen bleiben bestehen.";
+        HK_setOnlineStatus(device, text); progress.setText(text); progress.setProgress(100);
+        return;
+    }
     HK_run(device, online, progress, function() {
-        var target = HK_authorizationFields(device, row);
-        var issuer = String(target.issuer.value).toLowerCase(), endpoint = String(target.endpoint.value).toLowerCase();
-        if (!/^[0-9a-f]{16}$/.test(issuer) || !/^[0-9a-f]{12}$/.test(endpoint))
-            throw new Error("Home Key: Diese Zeile enthält keine vollständige Geräte-ID");
         var matches = [];
         for (var i = 1; i <= 16; i++) {
             var fields = HK_authorizationFields(device, i);
@@ -207,7 +224,7 @@ function HK_deleteAuthorization(row, device, online, progress, context) {
             }
             throw new Error("Gerät im Reader entfernt; ETS-Zeilen nicht geleert. Erneut versuchen: " + error.message);
         }
-        var text = "Gerät entfernt; " + matches.length + " ETS-Berechtigung(en) geleert. ETS-Projekt speichern und Parameter herunterladen.";
+        var text = "Gerät gelöscht und gesperrt; " + matches.length + " ETS-Berechtigung(en) geleert. Wallet-Eintrag und Aktionszuordnungen bleiben bestehen. ETS-Projekt speichern und Parameter herunterladen.";
         HK_setOnlineStatus(device, text); progress.setText(text);
     });
 }

@@ -11,3 +11,10 @@ Die Sperre bleibt nach Neustart, erneutem Parameterdownload und erneuter Provisi
 Aktionszuordnungen für die NFC-Tag-ID werden nicht gelöscht. Wird diese ID später neu vergeben, gelten die bisherigen Zuordnungen auch für den neuen Zugang. Die Übersicht zeigt Aktionszuordnungen ohne aktiven Zugang an.
 
 Es können bis zu 128 gesperrte Geräteidentitäten gespeichert werden. Eine volle Sperrliste wird gemeldet; vorhandene Sperren werden nicht automatisch verdrängt. Den Abschluss in ETS speichern und die geänderten Parameter herunterladen.
+
+Enthält der ausgewählte Platz keine vollständige Issuer-ID und Endpoint-ID,
+wird nur dieser unvollständige ETS-Eintrag geleert und deaktiviert. Es wird kein
+Gerät im Reader gelöscht oder gesperrt, da es nicht eindeutig bestimmt werden
+kann. Andere HomeKey-Plätze bleiben unverändert. Anschließend die Parameter
+herunterladen, damit die Berechtigung auch im Gerät entfernt wird. Das Leeren
+eines solchen ETS-Platzes löscht keine gespeicherten Geräteschlüssel.

@@ -1,10 +1,8 @@
 ### Apple Home Key aktivieren
 
-Hier wird die Verwendung von Apple Home Key freigegeben.
+Hier wird die Verwendung von Apple Home Key freigegeben. Die Einstellung wird angezeigt, wenn ein NFC-Scanner ausgewählt ist.
 
-Die Seite wird nur angezeigt, wenn unter **Zutrittskontrolle > Allgemein > Hardware > NFC Scanner** ein NFC-Scanner ausgewählt ist. Bei **Kein NFC** ist die Seite ausgeblendet.
+* **Nein** (Standard): HomeKey ist deaktiviert. Gespeicherte UID-Tags können weiterhin über die NFC-Zuordnungen verwendet werden.
+* **Ja**: Die HomeKey-Funktionen und die Verbindung zu Apple Home werden gestartet. NFC-Leser und Firmware müssen HomeKey unterstützen.
 
-* **Nein** (Standard): Apple Home Key ist deaktiviert. Es werden keine Home-Key-Zutrittsaktionen ausgeführt.
-* **Ja**: Die Home-Key-Leserhardware und die Verbindung zu Apple Home werden gestartet. Für den Zutritt muss zusätzlich eine Berechtigung für das jeweilige Gerät eingerichtet werden.
-
-Diese Einstellung schaltet nicht automatisch das Pairing frei. Die bestehende Fingerprint- und Keypad-Konfiguration bleibt unverändert.
+Die Aktivierung öffnet kein Pairing-Fenster. Erlauben Sie für die Einrichtung zusätzlich die NFC-Inbetriebnahme, speichern Sie einen Setup-Code und öffnen Sie das Pairing-Fenster. Nach der Kopplung werden die Geräte unter **Allgemein → NFC-Scanner** verwaltet.

@@ -1,8 +1,10 @@
 ### Berechtigung aktiv
 
-Mit diesem Parameter wird der jeweilige Eintrag der Berechtigungstabelle aktiviert.
+Mit diesem Parameter wird die HomeKey-Berechtigung des ausgewählten Platzes aktiviert.
 
-* **Nein** (Standard): Der Eintrag wird nicht ausgewertet.
-* **Ja**: Das durch Issuer-ID und Endpoint-ID bezeichnete Gerät darf die zugeordnete NFC-Aktion ausführen, nachdem es erfolgreich authentifiziert wurde.
+* **Nein** (Standard): Der Eintrag wird für den Zutritt nicht ausgewertet. Eingelesene Geräte sind zunächst deaktiviert.
+* **Ja**: Das durch Issuer-ID und Endpoint-ID bezeichnete Gerät darf nach erfolgreicher Authentifizierung die Aktionen seiner NFC-Tag-ID auslösen.
 
-Die Freigabe gilt erst nach dem Download der ETS-Anwendung. Das Gerät muss zuvor in Apple Home gekoppelt worden sein. Das Deaktivieren eines Eintrags löscht weder das Gerät aus Apple Home noch dessen gespeicherte Schlüssel.
+Die Änderung wird erst mit dem Parameterdownload wirksam. Für eine Aktion gelten weiterhin deren Sperren und Authentifizierungsbedingungen. Prüfen Sie die NFC-Tag-ID und die Aktionszuordnungen, bevor Sie einen Eintrag aktivieren.
+
+Das Deaktivieren entfernt weder die Geräteschlüssel noch den Eintrag in Apple Wallet. Verwenden Sie **Vorgang → löschen**, wenn das Gerät dauerhaft gesperrt und der Platz freigegeben werden soll.

@@ -411,7 +411,8 @@ OAM-AccessControl application 11.7 uses a single editor under **Allgemein →
 NFC-Scanner** instead of sixteen permission tabs. UID and HomeKey share the
 `Vorgang` dropdown: anlernen shows scanning/restoration, anlegen shows import
 and manual IDs, ändern shows permission editing, and löschen shows read-only
-confirmation. Select a HomeKey slot, edit
+confirmation. All fields and operations link to German ETS help; routine
+instructions appear in that help instead of inline message boxes. Select a HomeKey slot, edit
 its description, Tag ID and enabled flag, then check and download parameters.
 Existing parameter IDs and memory offsets remain unchanged. The overview joins
 live ETS drafts/action assignments with a timestamped, paginated UID snapshot.

@@ -1,10 +1,9 @@
 ### Geräte einlesen
 
-Mit dieser Schaltfläche werden die Kennungen der bereits gekoppelten Geräte über die ETS-KNX-Schnittstelle ausgelesen und in vollständig leere Einträge der Berechtigungstabelle übernommen.
+Mit dieser Schaltfläche werden die im Leser gespeicherten HomeKey-Geräte über die ETS-KNX-Schnittstelle eingelesen. Die Funktion steht bei **Zugangstyp → Apple HomeKey** und **Vorgang → anlegen** zur Verfügung.
 
-Vorhandene Einträge werden nicht überschrieben. Die importierten Einträge werden nicht automatisch aktiviert und gewähren dadurch noch keinen Zutritt.
+Neue Issuer- und Endpoint-IDs werden in vollständig leere Plätze übernommen. Vorhandene Einträge und Bezeichnungen bleiben erhalten. Reichen die freien Plätze nicht aus, wird der Import ohne Änderungen abgebrochen.
 
-Prüfen Sie die Issuer-ID und Endpoint-ID, vergeben Sie jeweils eine eindeutige NFC-Tag-ID und aktivieren Sie die gewünschten Einträge. Anschließend muss die Anwendung auf das Gerät heruntergeladen werden. Falls nicht genug vollständig leere Einträge vorhanden sind, wird der Import ohne Änderungen abgebrochen.
+Neue Einträge bleiben deaktiviert und erhalten zunächst die NFC-Tag-ID 0. Vergeben Sie eine freie ID, tragen Sie eine Bezeichnung ein und aktivieren Sie die gewünschte Berechtigung. Prüfen Sie die Aktionszuordnungen und laden Sie die Parameter herunter.
 
-Unter **Allgemein → NFC-Scanner**, Zugangstyp **Apple HomeKey** und
-**Vorgang → anlegen** wählen. Dort steht **Geräte einlesen** zur Verfügung.
+Fehlt ein gekoppeltes Gerät, halten Sie das iPhone oder die Watch einmal an den Leser oder verwenden Sie **Vorgang → anlernen → Gerät scannen**. Der Import hebt keine gespeicherten Gerätesperren auf und gewährt allein keinen Zutritt.

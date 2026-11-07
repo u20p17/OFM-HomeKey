@@ -1,7 +1,7 @@
 ### Issuer-ID
 
-Hier wird die Kennung des Ausstellers des digitalen Schlüssels eingetragen. Die Issuer-ID besteht aus genau 16 Hex-Zeichen; zulässig sind die Ziffern 0 bis 9 sowie die Buchstaben A bis F.
+Kennung des Ausstellers des digitalen Schlüssels. Die Issuer-ID besteht aus genau 16 Hexadezimalzeichen. Zulässig sind die Ziffern 0–9 und die Buchstaben A–F; Groß- und Kleinschreibung werden gleich behandelt.
 
-Verwenden Sie die vollständige, vom Gerät ausgelesene Issuer-ID ohne Leerzeichen oder Trennzeichen. Mit der Schaltfläche **Geräte einlesen** kann die Kennung nach der Kopplung automatisch übernommen werden.
+Unter **Vorgang → anlegen** kann die vollständige Kennung ohne Leerzeichen und Trennzeichen eingetragen werden. **Geräte einlesen** und **Gerät scannen** übernehmen sie automatisch vom Leser.
 
-Die Issuer-ID allein identifiziert noch keine einzelne Zutrittsberechtigung. Zusätzlich wird die passende Endpoint-ID benötigt.
+Die Issuer-ID allein bezeichnet noch kein einzelnes Gerät. Erst zusammen mit der passenden Endpoint-ID wird ein HomeKey-Gerät eindeutig zugeordnet. Mehrere Geräte können dieselbe Issuer-ID besitzen.

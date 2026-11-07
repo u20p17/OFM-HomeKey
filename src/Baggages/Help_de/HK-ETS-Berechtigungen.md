@@ -1,8 +1,10 @@
 ### Berechtigungen aus ETS-Tabelle
 
-Auswahl der Quelle für die Home-Key-Zutrittsberechtigungen.
+Hier wird die Quelle der HomeKey-Zutrittsberechtigungen ausgewählt.
 
 * **Nein** (Standard): Es werden die lokal über die USB-Konsole gespeicherten Zuordnungen verwendet.
-* **Ja**: Es werden ausschließlich die aktiven Einträge der ETS-Berechtigungstabelle verwendet. Lokale USB-Zuordnungen werden nicht zusätzlich ausgewertet.
+* **Ja**: Es werden ausschließlich die aktiven Berechtigungen aus der ETS-Tabelle verwendet. Die Bearbeitung erfolgt unter **Allgemein → NFC-Scanner** mit dem Zugangstyp **Apple HomeKey**.
 
-Die ETS-Tabelle bietet 16 Einträge. Jeder aktive Eintrag benötigt eine gültige Issuer-ID, eine Endpoint-ID und eine eindeutige NFC-Tag-ID. Bei ungültigen oder doppelten aktiven Einträgen wird die gesamte ETS-Tabelle gesperrt; es wird nicht auf die lokalen Berechtigungen zurückgegriffen.
+Die ETS-Tabelle bietet 16 Plätze. Jeder aktive Eintrag benötigt eine gültige Issuer-ID, die passende Endpoint-ID und eine eindeutige NFC-Tag-ID. Ungültige oder doppelte aktive Einträge sperren die gesamte HomeKey-ETS-Tabelle. In diesem Fall wird nicht auf lokale USB-Berechtigungen zurückgegriffen.
+
+Eine im Gerät gespeicherte Gerätesperre bleibt auch nach einem erneuten Parameterdownload bestehen. Sie kann nur ausdrücklich über **Erneut zulassen** aufgehoben werden.

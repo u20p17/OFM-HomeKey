@@ -1,29 +1,28 @@
 ### Apple Home Key
 
-Mit Apple Home Key können unterstützte iPhones und Apple Watches als digitale Schlüssel verwendet werden. Die angeschlossene NFC-Hardware und die Firmware müssen Apple Home Key unterstützen. Für die Kopplung mit Apple Home wird eine WLAN-Verbindung benötigt.
+Mit Apple Home Key können unterstützte iPhones und Apple Watches als digitale Schlüssel verwendet werden. Dafür sind eine passende Firmware, ein unterstützter NFC-Leser und eine IP-Verbindung zu Apple Home erforderlich.
 
-Die Kopplung in Apple Home allein gewährt keinen Zutritt. Erst die Zuordnung von Issuer-ID und Endpoint-ID zu einer NFC-Tag-ID (Spalte Tag in der NFC-Tabelle) berechtigt das Gerät zum Ausführen der zugehörigen NFC-Aktionen.
+Die Einrichtung erfolgt in zwei Bereichen:
 
-Aktivieren Sie Apple Home Key, vergeben Sie einen privaten Setup-Code und öffnen Sie das Pairing-Fenster. Nach der Kopplung können die Geräte-IDs ausgelesen und die Berechtigungen eingerichtet werden.
+* **Apple Home Key**: HomeKey aktivieren, Inbetriebnahme erlauben und die Kopplung mit Apple Home starten. Den privaten Setup-Code zuvor auf der Webseite **Home Key** oder über die lokale USB-Konsole festlegen.
+* **Allgemein → NFC-Scanner**: Geräte erkennen oder einlesen, benennen und einer freien NFC-Tag-ID zuordnen. Die Zuordnung zu den gewünschten Aktionen erfolgt anschließend im NFC-Tab.
 
+Die Kopplung mit Apple Home und das Einlesen der Geräte-IDs gewähren allein keinen Zutritt. Hierfür muss eine Berechtigung eingerichtet und auf das Gerät heruntergeladen werden. Die Sperren und Bedingungen der zugeordneten Aktionen gelten weiterhin.
 
-Ohne Apple Home Key ist die normale UID-Auswertung bei ausgewähltem NFC-Scanner immer aktiv. Bei aktiviertem HomeKey ist **Konventionelle UID-Tags zulassen** standardmäßig **Ja** und kann für reinen HomeKey-Betrieb auf **Nein** gestellt werden. UID-Tags werden nur über gespeicherte NFC-Zuordnungen berechtigt; eine UID ist kein kryptografischer Identitätsnachweis.
+Ohne HomeKey können gespeicherte UID-Tags verwendet werden. Bei aktiviertem HomeKey steuert **Konventionelle UID-Tags zulassen**, ob diese zusätzlich ausgewertet werden.
 
-Das Objekt **HomeKey Verriegelungsstatus** übermittelt den tatsächlichen Schlosszustand an Apple Home und bleibt bei aktiviertem Home Key sichtbar. Die acht weiteren Home-Key-Objekte für KNX-Inbetriebnahme, Status und Geräte-IDs erscheinen nur bei **Rohdaten auf den Bus senden = Ja**. Ohne diese Freigabe sendet die Firmware keine entsprechenden Status- oder Geräte-ID-Telegramme und nimmt keine Inbetriebnahme-/Endpoint-Auswahlbefehle über diese Objekte an.
+Das Kommunikationsobjekt **HomeKey Verriegelungsstatus** meldet den tatsächlichen Schlosszustand an Apple Home. Die zusätzlichen HomeKey-Objekte für Pairing, Status und Geräte-IDs werden mit **Rohdaten auf den Bus senden = Ja** eingeblendet. Für die ETS-Schaltflächen sind diese Diagnoseobjekte und ihre Gruppenadressen nicht erforderlich.
 
-Die ETS-Schaltflächen für Status, Pairing und Geräteimport verwenden Online-Verwaltungsfunktionen und benötigen keine Gruppenadressen dieser Diagnoseobjekte. Die NFC-Aktionen und deren Schaltobjekte arbeiten unabhängig davon.
+#### Kommunikationsobjekte
 
-
-### HomeKey-Kommunikationsobjekte
-
-| Objektname | Bedeutung |
+| Objekt | Bedeutung |
 | --- | --- |
-| HomeKey Verriegelungsstatus | Rückmeldung des Schlosses an Apple Home: 1 = verriegelt, 0 = entriegelt. |
+| HomeKey Verriegelungsstatus | Tatsächlicher Schlosszustand an Apple Home: 1 = verriegelt, 0 = entriegelt. |
 | HomeKey Pairingsteuerung | Pairing-Fenster für fünf Minuten öffnen (1) oder schließen (0). |
 | HomeKey Pairingstatus | Pairing-Fenster geöffnet (1) oder geschlossen (0). |
-| HomeKey Berechtigungsstatus | Status der HomeKey-Berechtigungstabelle. |
-| HomeKey Geräteauswahl | Index des provisionierten Geräts auswählen (0–63). |
-| HomeKey Issuer-ID (Teil 1) | Erste acht Hex-Zeichen der Issuer-ID des ausgewählten Geräts. |
-| HomeKey Issuer-ID (Teil 2) | Letzte acht Hex-Zeichen der Issuer-ID des ausgewählten Geräts. |
-| HomeKey Geräte-ID | Endpoint-ID des ausgewählten Geräts als zwölf Hex-Zeichen. |
-| HomeKey Pairing-Befehlsergebnis | Ergebnis des Inbetriebnahmebefehls. |
+| HomeKey Berechtigungsstatus | Zustand der HomeKey-Berechtigungstabelle. |
+| HomeKey Geräteauswahl | Index des im Leser gespeicherten Geräts auswählen (0–63). Dieser Index ist nicht der HomeKey-Platz in ETS. |
+| HomeKey Issuer-ID (Teil 1) | Erste acht Hexadezimalzeichen der Issuer-ID des ausgewählten Geräts. |
+| HomeKey Issuer-ID (Teil 2) | Letzte acht Hexadezimalzeichen der Issuer-ID des ausgewählten Geräts. |
+| HomeKey Geräte-ID | Endpoint-ID des ausgewählten Geräts als zwölf Hexadezimalzeichen. |
+| HomeKey Pairing-Befehlsergebnis | Ergebnis des letzten Inbetriebnahmebefehls. |

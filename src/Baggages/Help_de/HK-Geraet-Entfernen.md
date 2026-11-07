@@ -1,26 +1,13 @@
-# HomeKey-Gerät löschen
+### Gerät löschen
 
-Unter **Allgemein → NFC-Scanner**, Zugangstyp **Apple HomeKey**, den gewünschten
-Speicherplatz und **Vorgang → löschen** wählen. Am Reader den Programmiermodus einschalten und **Gerät
-löschen und Speicherplatz leeren** ausführen.
+Hier wird das ausgewählte HomeKey-Gerät dauerhaft aus der lokalen Zutrittsverwaltung entfernt. Wählen Sie **Vorgang → löschen**, prüfen Sie **HomeKey-Platz**, Bezeichnung und NFC-Tag-ID und schalten Sie den Programmiermodus am Gerät ein.
 
-Die Geräteschlüssel (öffentlicher Schlüssel und persistenter Authentifizierungsschlüssel)
-und lokale Berechtigungen dieses Endpoints werden entfernt. Eine persistente
-Sperre für Issuer-ID + Endpoint-ID verhindert, dass erneute Provisionierung,
-Neustart oder ein alter ETS-Download den Zugang wiederherstellen. Andere Geräte,
-der gemeinsame Issuer und die Reader-Identität bleiben erhalten. Ein iPhone und
-eine Watch sind getrennte Endpoints; sie werden getrennt verwaltet.
+**Gerät löschen** entfernt die Geräteschlüssel im Leser und speichert eine dauerhafte Sperre für die Kombination aus Issuer-ID und Endpoint-ID. Erst nach erfolgreicher Bestätigung werden die passenden Plätze in ETS einschließlich Bezeichnung geleert. Bei einem Fehler bleiben die ETS-Einträge erhalten.
 
-Erst nach Bestätigung des Readers werden alle passenden ETS-Plätze einschließlich
-Bezeichnung geleert. Aktionszuordnungen bleiben bestehen: Wird dieselbe NFC-Tag-ID
-später neu vergeben, gelten diese Aktionen für den neuen Zugang.
+Andere Geräte, die gemeinsame Issuer-ID und die Kopplung des Lesers mit Apple Home bleiben erhalten. Ein iPhone und eine Watch sind getrennte Geräte und werden einzeln gelöscht.
 
-Der Schlüssel kann weiterhin in Apple Wallet sichtbar sein. Lokales Löschen
-entfernt diesen Wallet-Eintrag nicht. Zum Wiederverwenden das gekoppelte Gerät
-unter **Vorgang → anlernen** über **Gerät scannen** auswählen, danach ausdrücklich
-**Erneut zulassen**. Berechtigung und Aktionen neu prüfen und
-Parameter herunterladen. Die Sperre wird nicht durch normalen Import aufgehoben.
+Die Sperre bleibt nach Neustart, erneutem Parameterdownload und erneuter Provisionierung dieser Geräte-ID bestehen. Der Schlüssel kann weiterhin in Apple Wallet sichtbar sein; das lokale Löschen entfernt diesen Wallet-Eintrag nicht. Zum Wiederverwenden unter **Vorgang → anlernen** das Gerät scannen und ausdrücklich **Erneut zulassen** wählen.
 
-Bis zu 128 gesperrte Identitäten werden unabhängig von den 16 ETS-Plätzen
-aufbewahrt. Eine volle Sperrliste wird gemeldet; bestehende Sperren werden nicht
-verdrängt. Fehler und fehlender Programmiermodus lassen ETS-Plätze unverändert.
+Aktionszuordnungen für die NFC-Tag-ID werden nicht gelöscht. Wird diese ID später neu vergeben, gelten die bisherigen Zuordnungen auch für den neuen Zugang. Die Übersicht zeigt Aktionszuordnungen ohne aktiven Zugang an.
+
+Es können bis zu 128 gesperrte Geräteidentitäten gespeichert werden. Eine volle Sperrliste wird gemeldet; vorhandene Sperren werden nicht automatisch verdrängt. Den Abschluss in ETS speichern und die geänderten Parameter herunterladen.

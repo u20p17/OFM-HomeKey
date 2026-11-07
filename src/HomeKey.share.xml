@@ -294,9 +294,6 @@
           <ParameterBlock Id="%AID%_PB-nnn" Text="Apple Home Key" Icon="apple" HelpContext="HK-Dokumentation">
             <ParameterRefRef RefId="%AID%_UP-%TT%00001_R-%TT%0000101" HelpContext="HK-Aktivieren" />
             <choose ParamRefId="%AID%_UP-%TT%00001_R-%TT%0000101">
-              <when test="0">
-                <ParameterSeparator Id="%AID%_PS-nnn" Text="Konventionelle UID-Tags sind aktiv. Gespeicherte Tags verwenden die NFC-Zuordnungen. Bei aktiviertem HomeKey kann die UID-Freigabe ausgeschaltet werden." UIHint="Information" HelpContext="HK-UID-Tags" />
-              </when>
               <when test="1">
               <ParameterRefRef RefId="%AID%_UP-%TT%00003_R-%TT%0000301" HelpContext="HK-UID-Tags" />
               <ParameterRefRef RefId="%AID%_UP-%TT%00002_R-%TT%0000201" HelpContext="HK-Inbetriebnahme" />
@@ -305,7 +302,6 @@
               <Button Id="%AID%_B-%TT%00003" Name="refreshStatus" Text="Status aktualisieren" EventHandler="HK_refreshStatus" EventHandlerOnline="ConnectionOriented" HelpContext="HK-Online-Status" />
               <ParameterRefRef RefId="%AID%_P-%TT%00005_R-%TT%0000501" HelpContext="HK-Online-Status" />
               <ComObjectRefRef RefId="%AID%_O-%TT%00001_R-%TT%0000101" />
-              <ParameterSeparator Id="%AID%_PS-nnn" Text="Setup-Code auf der Home-Key-Seite des Webservers oder lokal mit hk code setzen. HomeKit-Kopplung allein gewährt keinen Zutritt. Zusätzliche Diagnoseobjekte erscheinen bei Rohdaten auf den Bus senden = Ja." UIHint="Information" HelpContext="HK-Setup-Code" />
               <!-- ACC EnableRawData: integration prefix 2, parameter 000011. -->
               <choose ParamRefId="%AID%_UP-2000011_R-200001101"><when test="1">
                 <ComObjectRefRef RefId="%AID%_O-%TT%00002_R-%TT%0000201" />
@@ -318,7 +314,6 @@
                 <ComObjectRefRef RefId="%AID%_O-%TT%00009_R-%TT%0000901" />
               </when></choose>
               <ParameterRefRef RefId="%AID%_UP-%TT%00004_R-%TT%0000401" HelpContext="HK-ETS-Berechtigungen" />
-              <ParameterSeparator Id="%AID%_PS-nnn" Text="Geräte und Berechtigungen unter Allgemein → NFC-Scanner verwalten. HomeKit-Kopplung allein gewährt keinen Zutritt." UIHint="Information" />
 
             </when></choose>
           </ParameterBlock>

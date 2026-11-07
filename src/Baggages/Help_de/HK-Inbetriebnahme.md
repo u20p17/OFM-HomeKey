@@ -1,8 +1,10 @@
 ### NFC-Inbetriebnahme über USB/KNX erlauben
 
-Mit diesem Parameter wird festgelegt, ob die Kopplung neuer Geräte über die ETS oder die lokale Konsole gestartet werden darf.
+Hier wird die Inbetriebnahme von HomeKey über die ETS und die Gerätekonsole freigegeben.
 
-* **Nein** (Standard): Das Öffnen eines Pairing-Fensters ist gesperrt. Ein bereits geöffnetes Fenster wird geschlossen.
-* **Ja**: Das Pairing-Fenster kann für fünf Minuten geöffnet werden. Ein gültiger Setup-Code muss zuvor gespeichert worden sein.
+* **Nein** (Standard): Das Öffnen des Pairing-Fensters ist gesperrt. Ein bereits geöffnetes Fenster wird geschlossen.
+* **Ja**: Ein Pairing-Fenster kann für fünf Minuten geöffnet werden. Zuvor muss ein gültiger Setup-Code gespeichert sein.
 
-Die Freigabe öffnet das Pairing-Fenster nicht automatisch und erteilt keine Zutrittsberechtigung. Für das Ändern des Setup-Codes auf der Webseite muss zusätzlich der Programmiermodus aktiv sein.
+Die Freigabe öffnet das Fenster nicht automatisch und erteilt keine Zutrittsberechtigung. Bereits eingerichtete Berechtigungen können auch bei gesperrter Inbetriebnahme verwendet werden.
+
+Für **Gerät scannen** in der ETS muss diese Freigabe aktiv und der Programmiermodus eingeschaltet sein. Auch das Ändern des Setup-Codes auf der Webseite erfordert den Programmiermodus.

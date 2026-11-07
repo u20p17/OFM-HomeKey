@@ -340,7 +340,6 @@ bool HomeKeyModule::processFunctionProperty(uint8_t object, uint8_t property, ui
     if (!store.healthy || fatal) { result[0] = HomeKeyOnline::Unavailable; return true; }
     if(request.command>=5) {
         if(request.command==5) {
-            if(!knx.progMode()){result[0]=HomeKeyOnline::ProgrammingRequired;return true;}
             if(!enabled||!openknxNfc.active()){result[0]=HomeKeyOnline::Disabled;return true;}
             if(!ParamHK_PairingPermitted){result[0]=HomeKeyOnline::NotPermitted;return true;}
             uint32_t token=esp_random();if(!token)token=1;
@@ -350,7 +349,8 @@ bool HomeKeyModule::processFunctionProperty(uint8_t object, uint8_t property, ui
         if(request.command==6||request.command==7) {
             if(request.generation!=identification.session){result[0]=HomeKeyOnline::Stale;return true;}
             if(request.command==7){identification.cancel();++store.generation;result[0]=HomeKeyOnline::Ok;return true;}
-            if(!enabled||!knx.progMode()||!identification.active(millis())){identification.cancel();result[0]=HomeKeyOnline::Expired;return true;}
+            if(!ParamHK_PairingPermitted){identification.cancel();result[0]=HomeKeyOnline::NotPermitted;return true;}
+            if(!enabled||!identification.active(millis())){identification.cancel();result[0]=HomeKeyOnline::Expired;return true;}
             result[0]=HomeKeyOnline::Ok;result[2]=identification.ready;result[3]=identification.revoked;
             HomeKeyOnline::put32(result+4,identification.session);
             std::copy(identification.issuer.begin(),identification.issuer.end(),result+8);
@@ -360,7 +360,7 @@ bool HomeKeyModule::processFunctionProperty(uint8_t object, uint8_t property, ui
         HomeKey::IssuerId iid{};HomeKey::EndpointId eid{};
         std::copy(data+5,data+13,iid.begin());std::copy(data+13,data+19,eid.begin());
         if(request.command==10){result[0]=HomeKeyOnline::Ok;result[2]=store.isRevoked(iid,eid);result[3]=store.contains(iid,eid);resultLength=4;return true;}
-        if(!knx.progMode()){result[0]=HomeKeyOnline::ProgrammingRequired;return true;}
+        if(request.command==9&&!ParamHK_PairingPermitted){result[0]=HomeKeyOnline::NotPermitted;return true;}
         if (request.command == 8 && !store.isRevoked(iid,eid) && store.revocations.size() >= HomeKeyCredentialStore::MaxRevocations) {
             result[0] = HomeKeyOnline::RevocationsFull; return true;
         }
@@ -386,7 +386,6 @@ bool HomeKeyModule::processFunctionProperty(uint8_t object, uint8_t property, ui
             if (issuer.id.size() != 8 || item.id.size() != 6) { result[0] = HomeKeyOnline::Unavailable; return true; }
             if (request.command == 4)
             {
-                if (!knx.progMode()) { result[0] = HomeKeyOnline::ProgrammingRequired; return true; }
                 HomeKey::IssuerId issuerId{};
                 HomeKey::EndpointId endpointId{};
                 std::copy(issuer.id.begin(), issuer.id.end(), issuerId.begin());

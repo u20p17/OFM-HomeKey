@@ -7,4 +7,6 @@ Hier wird die Inbetriebnahme von HomeKey über die ETS und die Gerätekonsole fr
 
 Die Freigabe öffnet das Fenster nicht automatisch und erteilt keine Zutrittsberechtigung. Bereits eingerichtete Berechtigungen können auch bei gesperrter Inbetriebnahme verwendet werden.
 
-Für **Gerät scannen** in der ETS muss diese Freigabe aktiv und der Programmiermodus eingeschaltet sein. Auch das Ändern des Setup-Codes auf der Webseite erfordert den Programmiermodus.
+Für **Gerät scannen** und **Erneut zulassen** in der ETS muss diese Freigabe aktiv sein. Der Programmiermodus ist für die ETS-Verwaltungsfunktionen nicht erforderlich. **Gerät löschen** bleibt auch bei gesperrter Inbetriebnahme möglich.
+
+Das Ändern des Setup-Codes auf der Webseite erfordert weiterhin den Programmiermodus.

@@ -1,6 +1,6 @@
 ### Erneut zulassen
 
-Mit dieser Schaltfläche wird die im Leser gespeicherte Sperre des ausgewählten HomeKey-Geräts ausdrücklich aufgehoben. Die Funktion ist unter **Vorgang → anlernen** verfügbar und erfordert den Programmiermodus.
+Mit dieser Schaltfläche wird die im Leser gespeicherte Sperre des ausgewählten HomeKey-Geräts ausdrücklich aufgehoben. Die Funktion ist unter **Vorgang → anlernen** verfügbar und erfordert **NFC-Inbetriebnahme über USB/KNX erlauben = Ja**. Der Programmiermodus ist dafür nicht erforderlich.
 
 Ein zuvor gelöschtes Gerät zuerst mit **Gerät scannen** identifizieren. Prüfen Sie anschließend den ausgewählten HomeKey-Platz und die Bezeichnung, bevor Sie die Sperre aufheben.
 

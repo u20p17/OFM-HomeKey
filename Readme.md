@@ -421,7 +421,10 @@ OAM-AccessControl application 11.7 uses a single editor under **Allgemein →
 NFC-Scanner** instead of sixteen permission tabs. UID and HomeKey share the
 `Vorgang` dropdown: anlernen shows scanning/restoration, anlegen shows import
 and manual IDs, ändern shows permission editing, and löschen shows read-only
-confirmation. All fields and operations link to German ETS help; routine
+confirmation. ETS management operations do not require programming mode.
+Scanning and explicit restoration require commissioning permission; deletion
+remains available when commissioning is disabled. Web setup-code changes still
+require programming mode. All fields and operations link to German ETS help; routine
 instructions appear in that help instead of inline message boxes. Select a HomeKey slot, edit
 its description, Tag ID and enabled flag, then check and download parameters.
 Existing parameter IDs and memory offsets remain unchanged. The overview joins
@@ -430,12 +433,13 @@ It flags duplicate active IDs/identities and action references without a credent
 Names are manually assigned: authenticated identification selects the phone's
 endpoint but does not supply a reliable personal Apple device name.
 
-`Gerät löschen` requires programming mode. It atomically
+`Gerät löschen` works without programming mode, including while commissioning
+is disabled so revocation remains possible. It atomically
 removes the selected endpoint's public/persistent keys and stores its identity in
 a separate revocation list (128 entries, no silent eviction). Other endpoints,
 issuer/controller pairing and the reader identity remain intact. All matching ETS
-rows are cleared only after successful persistence. Busy/stale responses, missing
-programming mode and flash errors leave ETS rows intact. Deletion is idempotent,
+rows are cleared only after successful persistence. Busy/stale responses and
+flash errors leave ETS rows intact. Deletion is idempotent,
 including for an endpoint already absent from the reader. Action assignments are
 retained and marked unassigned; reusing the Tag ID also reuses those assignments.
 
@@ -462,8 +466,8 @@ The module exposes function property object 165/property 3 through the unchanged
 OGM-Common wrapper (object 158/property 3), including response fragmentation for
 small APDUs. Requests: `0` status, `1` open, `2` close,
 `3,index,generationBE32` for an endpoint, or `4,index,generationBE32` to delete
-that endpoint while programming mode is active. Deletion replies use the two-byte
-result/version envelope; result 10 means programming mode is required. Replies start with result/version (protocol version 1). Status
+that endpoint without programming mode. Deletion replies use the two-byte
+result/version envelope; legacy result 10 is retained for older firmware responses. Replies start with result/version (protocol version 1). Status
 is 12 bytes: result, version, enabled, permitted, open, commissioning result,
 authorization status, endpoint count, generation BE32. Endpoint is 22 bytes:
 result, version, index, count, generation BE32, issuer ID (8), endpoint ID (6).
@@ -527,17 +531,17 @@ Physical PN7161/Elechouse and iPhone/Watch tests remain required.
 
 Protocol version 1 gains additive commands:
 
-- `5`: start a 60-second authenticated identification session (programming mode,
-  HomeKey enabled and commissioning permission required). Reply: result/version,
+- `5`: start a 60-second authenticated identification session (HomeKey enabled
+  and commissioning permission required; no programming mode). Reply: result/version,
   random token BE32. No normal UID/HomeKey access actions run during this session.
 - `6,tokenBE32`: poll. Reply: result/version, ready, revoked, token BE32,
   issuer (8), endpoint (6). Only a completed authentication produces an identity.
 - `7,tokenBE32`: cancel. Timeout, parameter download and cancellation invalidate
   the session. A finished result suppresses access until cancellation or timeout.
 - `8,generationBE32,issuer8,endpoint6`: persistent identity revocation, even if
-  the endpoint is absent. Programming mode required.
-- `9,generationBE32,issuer8,endpoint6`: explicit restoration; programming mode
-  required. Does not restore any permission mapping.
+  the endpoint is absent. No programming mode or commissioning permission required.
+- `9,generationBE32,issuer8,endpoint6`: explicit restoration; commissioning
+  permission required, no programming mode. Does not restore any permission mapping.
 - `10,generationBE32,issuer8,endpoint6`: read revocation/provisioning state;
   reply: result/version, revoked, present.
 
@@ -555,3 +559,15 @@ It covers invalid ETS configuration, version reporting, programming-mode write
 rejection, configured recovery, idempotent route registration and command-queue
 allocation failure. The browser regression also checks the matching ETS message,
 disabled actions, retained entered QR code and recovery after configuration.
+
+ETS administration permission checks can be exercised against the actual command
+handlers and NVS credential store, with programming mode off throughout:
+
+```sh
+python3 test/nfc_management/commissioning_test.py
+```
+
+This checks scan start/result/expiry, cancellation when commissioning permission
+is revoked, persistent identity/index deletion, explicit restoration permission,
+stale generations, invalid configuration and rejection of mutations through
+read-only function-property state requests.

@@ -8,7 +8,7 @@ function fixture(entries) {
         var p='HK_Authorization'+(i<10?'0':'')+i;
         parameters[p+'Enabled']={value:0}; parameters[p+'Issuer']={value:''}; parameters[p+'Endpoint']={value:''}; parameters[p+'AccessId']={value:0}; parameters[p+'Description']={value:''};
     }
-    var f={ parameters:parameters, calls:calls, fail:null, canceled:false, programming:true, generation:generation, entries:entries,
+    var f={ parameters:parameters, calls:calls, fail:null, canceled:false, generation:generation, entries:entries,
         device:{getParameterByName:function(name){return parameters[name];}},
         online:{connect:function(){},disconnect:function(){disconnected++;}},
         progress:{setText:function(){},setProgress:function(){},isCanceled:function(){return f.canceled;}},
@@ -20,7 +20,6 @@ function fixture(entries) {
         if(data[0]==1) {opened=true;return [0,1];}
         if(data[0]==2) {opened=false;return [0,1];}
         if(data[0]==8) {
-            if(!f.programming)return [10,1];
             if(JSON.stringify(data.slice(1,5))!=JSON.stringify(f.generation))return [8,1];
             var identity=HK_hex(data,5,14);
             f.entries=f.entries.filter(function(e){return HK_hex(e.issuer.concat(e.endpoint),0,14)!=identity;});
@@ -83,11 +82,10 @@ test('Already absent device can be removed from ETS without deleting a different
     HK_deleteAuthorization01(f.device,f.online,f.progress,{});
     assert(readFields(f,1)[1]=='','Stale ETS row retained');assert(f.calls.some(function(c){return c[0]==8;}),'Absent identity was not persistently revoked');
 });
-test('No programming mode, stale list or device write failure leaves ETS rights intact',function(){
+test('Legacy firmware refusal, stale list or device write failure leaves ETS rights intact',function(){
     for(var failure=0;failure<3;failure++){
         var f=fixture([entry(171)]);imported(f);f.parameters.HK_Authorization01Description.value='Keep me';
-        if(failure==0)f.programming=false;
-        else f.fail=function(data){if(data[0]==8)return [failure==1?8:7,1];};
+        f.fail=function(data){if(data[0]==8)return [failure==0?10:failure==1?8:7,1];};
         rejects(function(){HK_deleteAuthorization01(f.device,f.online,f.progress,{});},'Deletion should fail');
         assert(readFields(f,1)[2]=='0123456789ab'&&f.parameters.HK_Authorization01Description.value=='Keep me','Failed deletion cleared ETS');
         assert(f.entries.length==1,'Failed deletion changed devices');

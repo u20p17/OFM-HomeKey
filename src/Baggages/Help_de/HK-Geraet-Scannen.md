@@ -1,6 +1,6 @@
 ### Gerät scannen
 
-Mit dieser Schaltfläche wird ein bereits gekoppeltes iPhone oder eine Apple Watch durch einen authentifizierten NFC-Scan erkannt. Unter **Vorgang → anlernen** den Programmiermodus einschalten und die NFC-Inbetriebnahme freigeben. Anschließend das gewünschte Gerät an den Leser halten.
+Mit dieser Schaltfläche wird ein bereits gekoppeltes iPhone oder eine Apple Watch durch einen authentifizierten NFC-Scan erkannt. Unter **Vorgang → anlernen** die NFC-Inbetriebnahme freigeben. Der Programmiermodus ist dafür nicht erforderlich. Anschließend das gewünschte Gerät an den Leser halten.
 
 Der Scan wartet bis zu **60 Sekunden**. Während dieser Identifizierung werden keine UID- oder HomeKey-Zutrittsaktionen ausgelöst. Ein gewöhnlicher UID-Tag kann damit kein HomeKey-Gerät ersetzen.
 

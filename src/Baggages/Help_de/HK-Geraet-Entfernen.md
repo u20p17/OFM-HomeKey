@@ -1,6 +1,6 @@
 ### Gerät löschen
 
-Hier wird das ausgewählte HomeKey-Gerät dauerhaft aus der lokalen Zutrittsverwaltung entfernt. Wählen Sie **Vorgang → löschen**, prüfen Sie **HomeKey-Platz**, Bezeichnung und NFC-Tag-ID und schalten Sie den Programmiermodus am Gerät ein.
+Hier wird das ausgewählte HomeKey-Gerät dauerhaft aus der lokalen Zutrittsverwaltung entfernt. Wählen Sie **Vorgang → löschen**, prüfen Sie **HomeKey-Platz**, Bezeichnung und NFC-Tag-ID vor dem Ausführen der Schaltfläche. Der Programmiermodus ist dafür nicht erforderlich. Ein Gerät kann auch bei gesperrter NFC-Inbetriebnahme widerrufen werden.
 
 **Gerät löschen** entfernt die Geräteschlüssel im Leser und speichert eine dauerhafte Sperre für die Kombination aus Issuer-ID und Endpoint-ID. Erst nach erfolgreicher Bestätigung werden die passenden Plätze in ETS einschließlich Bezeichnung geleert. Bei einem Fehler bleiben die ETS-Einträge erhalten.
 

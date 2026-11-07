@@ -506,10 +506,15 @@ reader factory, retries, removal/presence handling and UID delivery to the
 existing enrollment/storage/action path. `NfcReader.hpp` and the PN7161/ST25
 adapters are also in OFM-AccessControl. Ordinary NFC requires no HomeKey module.
 
-The standalone PN7161 library owns `Pn7161Reader` and `Pn7161I2cTransport`.
-The standalone ST25R3916 library owns its I2C/ISO-DEP driver. Both take explicit
-bus/pin configuration and optional copied ECP bytes; neither depends on OpenKNX,
-HomeKey, HomeSpan, ETS or credentials. Their upstream MIT notices are retained.
+OFM-AccessControl also owns the `Pn7161Reader` facade and
+`Pn7161NativeI2cBridge`. PN7161 I2C always uses the native transport; no Wire
+transaction fallback is included. Their configuration
+and lifecycle belong to the application module. The separate PN7161 library
+contains only the native ESP-IDF NCI engine and SPI/I2C transports; it contains
+no Arduino/Wire code. The standalone ST25R3916 library owns its I2C/ISO-DEP driver.
+The reader facade accepts optional copied ECP data supplied by this module.
+Upstream MIT notices are retained, including `OFM-AccessControl/LICENSE.HomeKey-ESP32`
+for the moved facade.
 
 OFM-HomeKey implements the optional `NfcReaderExtension` hooks: HAP startup
 readiness, ECP frame generation, HomeKey SELECT/authentication and UID policy

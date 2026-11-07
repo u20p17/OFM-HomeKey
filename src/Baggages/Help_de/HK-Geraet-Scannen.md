@@ -4,6 +4,12 @@ Mit dieser Schaltfläche wird festgestellt, welches bereits gekoppelte iPhone od
 
 **NFC-Inbetriebnahme über USB/KNX erlauben** muss auf **Ja** stehen. Nach dem Drücken bleiben bis zu **60 Sekunden** zum Vorhalten. Der Programmiermodus ist nicht erforderlich. Das Gerät muss bereits einen HomeKey für diesen Leser besitzen; die Schaltfläche startet keine Kopplung mit Apple Home.
 
-Nach erfolgreicher Authentifizierung werden Issuer-ID und Endpoint-ID übernommen. Ein vorhandener passender HomeKey-Platz wird ausgewählt oder ein vollständig freier Platz belegt. Vorhandene Bezeichnungen und Tag-IDs bleiben erhalten. Neue Einträge bleiben deaktiviert und erhalten zunächst Tag-ID 0.
+Issuer-ID und Endpoint-ID werden erst übernommen, wenn die Identifizierung
+erfolgreich abgeschlossen und die Verbindung zum Leser beendet wurde. Bei
+Abbruch, Zeitüberschreitung oder Verbindungsfehler bleibt der bisherige ETS-Platz
+unverändert; ein neuer Platz wird nicht belegt. Neue Einträge bleiben bis zur
+ausdrücklichen Aktivierung gesperrt.
+
+Nach erfolgreichem Abschluss werden Issuer-ID und Endpoint-ID übernommen. Ein vorhandener passender HomeKey-Platz wird ausgewählt oder ein vollständig freier Platz belegt. Vorhandene Bezeichnungen und Tag-IDs bleiben erhalten. Neue Einträge bleiben deaktiviert und erhalten zunächst Tag-ID 0.
 
 Danach eine Bezeichnung und freie NFC-Tag-ID eintragen, die Berechtigung aktivieren, die Aktionen zuordnen, **Zuordnung prüfen** ausführen und die Parameter herunterladen. Während der Identifizierung werden keine Zutrittsaktionen ausgelöst. Meldet ETS ein gesperrtes Gerät, dient **Erneut zulassen** zur ausdrücklich gewünschten Wiederfreigabe.

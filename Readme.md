@@ -427,8 +427,7 @@ remains available when commissioning is disabled. Web setup-code changes still
 require programming mode. All fields and operations link to German ETS help; routine
 instructions appear in that help instead of inline message boxes. Select a HomeKey slot, edit
 its description, Tag ID and enabled flag, then check and download parameters.
-Existing parameter IDs and memory offsets remain unchanged. The overview joins
-live ETS drafts/action assignments with a timestamped, paginated UID snapshot.
+Existing parameter IDs and memory offsets remain unchanged. The overview defaults to a complete device snapshot: downloaded HomeKey permissions, names, UID records and NFC action assignments. A separate ETS draft view shows pending edits. Named incomplete slots do not appear as devices in the readback view. Read-only command 11 returns public permission metadata; command 114 in AccessControl returns downloaded action assignments. Both require the matching updated firmware and ETS product.
 It flags duplicate active IDs/identities and action references without a credential.
 Names are manually assigned: authenticated identification selects the phone's
 endpoint but does not supply a reliable personal Apple device name.

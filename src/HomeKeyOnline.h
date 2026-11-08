@@ -18,8 +18,12 @@ namespace HomeKeyOnline
     }
     inline bool decode(const uint8_t* data, size_t length, Request& request)
     {
-        if (!data || !length || data[0] > 10) return false;
-        if (data[0] == 3 || data[0] == 4)
+        if (!data || !length || data[0] > 11) return false;
+        if(data[0]==11) {
+            if(length!=6||data[1]>64)return false;
+            request.index=data[1];request.generation=get32(data+2);
+        }
+        else if (data[0] == 3 || data[0] == 4)
         {
             if (length != 6 || data[1] >= 64) return false;
             request.index = data[1]; request.generation = get32(data + 2);

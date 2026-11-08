@@ -88,6 +88,7 @@ class HomeKeyModule : public OpenKNX::Module, public NfcReaderExtension
     }
     void updateStatus();
     uint8_t authorizationStatus();
+    void readPermissionSnapshot(uint8_t index,uint32_t generation,uint8_t* out,uint8_t& length);
     uint8_t requestCommissioning(bool open);
     void publishEndpoint();
     std::atomic<bool> policyLoaded{false};

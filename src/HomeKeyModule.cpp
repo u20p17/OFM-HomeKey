@@ -346,6 +346,7 @@ bool HomeKeyModule::processFunctionProperty(uint8_t object, uint8_t property, ui
     std::unique_lock<std::recursive_mutex> guard(store.mutex, std::try_to_lock);
     if (!guard.owns_lock()) { result[0] = HomeKeyOnline::Busy; return true; }
     if (!store.healthy || fatal) { result[0] = HomeKeyOnline::Unavailable; return true; }
+    if(request.command==11){readPermissionSnapshot(request.index,request.generation,result,resultLength);return true;}
     if(request.command>=5) {
         if(request.command==5) {
             if(!enabled||!openknxNfc.active()){result[0]=HomeKeyOnline::Disabled;return true;}
@@ -410,11 +411,51 @@ bool HomeKeyModule::processFunctionProperty(uint8_t object, uint8_t property, ui
     return true;
 }
 
+// Called on the KNX thread with store.mutex held. Exposes public identity and
+// downloaded permission metadata only; provisioning keys never leave the store.
+void HomeKeyModule::readPermissionSnapshot(uint8_t index,uint32_t wanted,uint8_t* out,uint8_t& length)
+{
+    out[0]=HomeKeyOnline::Busy;out[1]=1;length=2;
+    if(!policyLoaded)return;
+    uint32_t revision=2166136261u;
+    auto hash=[&](uint8_t v){revision=(revision^v)*16777619u;};
+    for(unsigned shift=0;shift<32;shift+=8)hash(store.generation>>shift);
+    hash(ParamHK_Enabled);hash(etsAuthorization);hash(etsTableValid);
+    const auto* raw=knx.paramData(HK_Authorization01Enabled);
+    const auto* descriptions=knx.paramData(HK_Authorization01Description);
+    for(size_t i=0;i<HomeKey::EtsRows*HomeKey::EtsRowBytes;++i)hash(raw[i]);
+    for(size_t i=0;i<HomeKey::EtsRows*HK_Authorization01DescriptionLength;++i)hash(descriptions[i]);
+    if(!revision)revision=1;
+    const size_t count=etsAuthorization?HomeKey::EtsRows:store.mappings.size();
+    out[0]=HomeKeyOnline::Stale;
+    if(index>count||((index||wanted)&&wanted!=revision))return;
+    out[0]=0;out[2]=index;out[3]=count;
+    out[4]=(ParamHK_Enabled?1:0)|(etsAuthorization?2:0)|(etsTableValid?4:0);
+    HomeKeyOnline::put32(out+5,revision);length=9;
+    if(index==count)return;
+    HomeKey::Mapping mapping;
+    bool valid=true,permission=false;
+    std::fill(out+9,out+58,0);
+    if(etsAuthorization){
+        const auto* row=raw+index*HomeKey::EtsRowBytes;
+        permission=row[0]&0x80;
+        mapping.accessId=(uint16_t(row[31])<<8)|row[32];
+        valid=HomeKey::parseHex(row+1,mapping.issuer)&&HomeKey::parseHex(row+18,mapping.endpoint)&&row[17]==0&&row[30]==0;
+        std::copy(descriptions+index*HK_Authorization01DescriptionLength,
+            descriptions+index*HK_Authorization01DescriptionLength+32,out+26);
+    }else{mapping=store.mappings[index];permission=true;}
+    out[9]=(permission?1:0)|(valid&&store.contains(mapping.issuer,mapping.endpoint)?2:0)|
+        (valid&&store.isRevoked(mapping.issuer,mapping.endpoint)?4:0)|(valid?8:0);
+    out[10]=mapping.accessId>>8;out[11]=mapping.accessId;
+    if(valid){std::copy(mapping.issuer.begin(),mapping.issuer.end(),out+12);std::copy(mapping.endpoint.begin(),mapping.endpoint.end(),out+20);}
+    length=58;
+}
+
 bool HomeKeyModule::processFunctionPropertyState(uint8_t object, uint8_t property, uint8_t length, uint8_t* data, uint8_t* result, uint8_t& resultLength)
 {
     if (object != HomeKeyOnline::Object || property != HomeKeyOnline::Property) return false;
     HomeKeyOnline::Request request;
-    if (!HomeKeyOnline::decode(data, length, request) || (request.command != 0 && request.command != 3 && request.command != 6 && request.command != 10))
+    if (!HomeKeyOnline::decode(data, length, request) || (request.command != 0 && request.command != 3 && request.command != 6 && request.command != 10 && request.command != 11))
     {
         result[0] = HomeKeyOnline::Invalid; result[1] = HomeKeyOnline::Version; resultLength = 2;
         return true;

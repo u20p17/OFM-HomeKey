@@ -13,7 +13,11 @@ function HK_call(device, online, progress, data) {
     return response;
 }
 function HK_requireOk(response) {
-    if (Number(response[0]) != 0) throw new Error("Home Key: " + (HK_onlineErrors[Number(response[0])] || "Unbekannter Gerätefehler"));
+    if (Number(response[0]) != 0) {
+        var error = new Error("Home Key: " + (HK_onlineErrors[Number(response[0])] || "Unbekannter Gerätefehler"));
+        error.snapshotChanged = Number(response[0]) == 8;
+        throw error;
+    }
 }
 function HK_wait(progress, milliseconds) {
     var until = new Date().getTime() + milliseconds;
@@ -40,15 +44,17 @@ function HK_statusText(status) {
         "; " + (HK_authorizationText[status[6]] || "unbekannt") + "; Endpoints: " + status[7];
 }
 function HK_run(device, online, progress, work) {
+    var connected = true;
     try {
         online.connect();
         work();
+        online.disconnect(); connected = false;
         progress.setProgress(100);
     } catch (error) {
         HK_setOnlineStatus(device, "Fehler: " + error.message);
         throw error;
     } finally {
-        try { online.disconnect(); } catch (ignored) { }
+        if (connected) { try { online.disconnect(); } catch (ignored) { } }
     }
 }
 function HK_refreshStatus(device, online, progress, context) {
@@ -126,7 +132,9 @@ function HK_readEndpoints(device, online, progress) {
     throw new Error("Home Key: Geräteliste änderte sich während des Lesens; später erneut versuchen");
 }
 function HK_importEndpoints(device, online, progress, context) {
-    HK_run(device, online, progress, function() {
+    var connected = true, touched = false, saved = [], free = [], plan = [];
+    try {
+        online.connect();
         var entries = HK_readEndpoints(device, online, progress), free = [], existing = {}, plan = [];
         for (var row = 1; row <= 16; row++) {
             var prefix = "HK_Authorization" + (row < 10 ? "0" : "") + row;
@@ -145,20 +153,39 @@ function HK_importEndpoints(device, online, progress, context) {
         // Capacity and the complete snapshot are checked before changing any field.
         if (plan.length > free.length) throw new Error("Home Key: Nicht genug leere Zeilen (" + plan.length + " Geräte, " + free.length + " frei); vorhandene Einträge bleiben erhalten");
         if (progress.isCanceled()) throw new Error("Home Key: Abgebrochen");
-        try {
-            for (var i = 0; i < plan.length; i++) {
-                free[i].issuer.value = plan[i].issuer; free[i].endpoint.value = plan[i].endpoint;
-                free[i].action.value = 0; free[i].enabled.value = 0;
-            }
-        } catch (error) {
-            for (var i = 0; i < plan.length; i++) {
-                try { free[i].issuer.value = ""; free[i].endpoint.value = ""; free[i].action.value = 0; free[i].enabled.value = 0; } catch (ignored) { }
-            }
-            throw error;
+        for (var i = 0; i < plan.length; i++) {
+            var f = free[i];
+            saved.push([f.enabled.value, f.issuer.value, f.endpoint.value, f.action.value, f.description.value]);
+        }
+        online.disconnect(); connected = false;
+        if (progress.isCanceled()) throw new Error("Home Key: Abgebrochen");
+        for (var i = 0; i < plan.length; i++) {
+            var f = free[i], fields = [f.enabled,f.issuer,f.endpoint,f.action,f.description];
+            for (var n = 0; n < fields.length; n++) if (fields[n].value !== saved[i][n])
+                throw new Error("Home Key: ETS-Platz während des Imports geändert; erneut versuchen");
+        }
+        touched = true;
+        for (var i = 0; i < plan.length; i++) {
+            free[i].issuer.value = plan[i].issuer; free[i].endpoint.value = plan[i].endpoint;
+            free[i].action.value = 0; free[i].enabled.value = 0;
         }
         var text = plan.length + " Geräte-IDs importiert (deaktiviert). NFC-Tag-IDs vergeben, Zeilen aktivieren und herunterladen.";
         HK_setOnlineStatus(device, text); progress.setText(text);
-    });
+        if (progress.isCanceled()) throw new Error("Home Key: Abgebrochen");
+        progress.setProgress(100);
+    } catch (error) {
+        var failed = false;
+        if (touched) for (var i = 0; i < plan.length; i++) {
+            var f = free[i], fields = [f.enabled,f.issuer,f.endpoint,f.action,f.description];
+            for (var n = 0; n < fields.length; n++) {
+                try { fields[n].value = saved[i][n]; } catch (ignored) { failed = true; }
+            }
+        }
+        HK_setOnlineStatus(device, "Import fehlgeschlagen: " + error.message + (failed ? "; ETS-Plätze prüfen: Rücksetzen unvollständig." : "; keine Geräte-IDs übernommen."));
+        throw error;
+    } finally {
+        if (connected) { try { online.disconnect(); } catch (ignored) { } }
+    }
 }
 
 function HK_authorizationFields(device, row) {
@@ -261,8 +288,9 @@ function HK_validateAssignments(input, changed, prevValue, context) {
         ids[id] = row;
         var issuer = String(input[prefix + "Issuer"]).toLowerCase();
         var endpoint = String(input[prefix + "Endpoint"]).toLowerCase();
-        // Empty identities must remain editable when a new row is enabled.
-        if (/^[0-9a-f]{16}$/.test(issuer) && /^[0-9a-f]{12}$/.test(endpoint)) {
+        if (!/^[0-9a-f]{16}$/.test(issuer) || !/^[0-9a-f]{12}$/.test(endpoint))
+            return "Home Key: Berechtigung " + row + " benötigt eine vollständige Issuer-ID (16 Hex-Zeichen) und Endpoint-ID (12 Hex-Zeichen). Zuerst Gerät scannen/anlegen, danach aktivieren.";
+        {
             var key = issuer + ":" + endpoint;
             if (identities[key]) return "Home Key: Dasselbe Gerät steht in Berechtigung " + identities[key] + " und " + row + ". Nur eine Zeile aktivieren.";
             identities[key] = row;
@@ -308,5 +336,16 @@ function HK_nfcAssignmentInfo(device, online, progress, id, uidFound) {
     var entries = HK_readEndpoints(device, online, progress), found = false;
     for (var i = 0; i < entries.length; i++)
         if (entries[i].issuer == issuer && entries[i].endpoint == endpoint) found = true;
-    return (found ? "Provisioniert; " : "Nicht provisioniert; ") + label + "; Zuordnung nach ETS-Download wirksam";
+    if (!found) return "Nicht provisioniert; " + label;
+    if (typeof NFCUI_readHomeKeys != "function") return "Provisioniert; ETS-Entwurf: " + names.join(", ") + "; Gerätestand nicht geprüft";
+    var snapshot = NFCUI_readHomeKeys(device, online, progress);
+    NFCUI_readHomeKeys(device, online, progress, snapshot);
+    var records = snapshot.cache ? snapshot.cache.split(";") : [];
+    for (var i = 0; i < records.length; i++) {
+        var record = records[i], flags = parseInt(record.substr(18,2),16);
+        if (record.substr(24,16) == issuer && record.substr(40,12) == endpoint &&
+            parseInt(record.substr(20,4),16) == Number(id) && (flags & 15) == 11 && snapshot.policy == 7)
+            return "Gerät: HomeKey " + NFCUI_textFromHex(record.substr(52,64)) + "; ID " + id + " aktiv";
+    }
+    return "Provisioniert; ETS-Entwurf: " + names.join(", ") + "; Berechtigung im Gerät abweichend/inaktiv";
 }

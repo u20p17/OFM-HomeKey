@@ -9,6 +9,9 @@
 #include <esp_timer.h>
 #include <esp_heap_caps.h>
 #include <sodium.h>
+#if defined(OPENKNX_NFC_ST25R3916_I2C)
+#include <ST25R3916.hpp>
+#endif
 
 namespace
 {
@@ -482,6 +485,15 @@ namespace
 
 bool HomeKeyModule::processCommand(const std::string cmd, bool diagnoseKo)
 {
+#if defined(OPENKNX_NFC_ST25R3916_I2C)
+    if (cmd == "hk timing baseline" || cmd == "hk timing fast") {
+        if (diagnoseKo) { logInfoP("Polling mode requires local console"); return true; }
+        const bool fast = cmd == "hk timing fast";
+        ST25R3916::setFastPolling(fast);
+        logInfoP("ST25 polling: %s; switch only between card presentations", fast ? "fast (TX-only ECP, WUPA 10 ms)" : "baseline (original timings)");
+        return true;
+    }
+#endif
     const auto wifi = HomeKeyWifi::command(cmd, diagnoseKo, started,
         [this](const std::string& ssid, const std::string& password)
         { return provisioning && provisioning->wifi(ssid, password); });
@@ -579,6 +591,9 @@ void HomeKeyModule::showMemory()
 
 void HomeKeyModule::showHelp()
 {
+#if defined(OPENKNX_NFC_ST25R3916_I2C)
+    openknx.console.printHelpLine("hk timing baseline|fast", "ST25 polling mode; fast after reboot; switch with no card on the antenna");
+#endif
     openknx.console.printHelpLine("hk memory", "Internal heap and Home Key task stack headroom in bytes");
     openknx.console.printHelpLine("wifi <SSID> <password>", "Save WiFi and connect; available before ETS setup (local console)");
     openknx.console.printHelpLine("hk", "Show Home Key command syntax (local console)");

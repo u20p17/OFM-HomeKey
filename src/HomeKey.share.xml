@@ -294,6 +294,95 @@
       </Static>
       <Dynamic>
         <Channel Id="%AID%_CH-%PREFIX%" Number="%PREFIX%" Name="Home Key" Text="Apple Home Key" HelpContext="HK-Dokumentation">
+          <!-- Keep the complete stored policy active for download, independently of
+               the visible editor operation, selected slot and NFC scanner setting.
+               Reuse the original refs so scripts, imports and downloads share values. -->
+          <ParameterBlock Id="%AID%_PB-nnn" Name="AuthorizationDownload" Text="HomeKey-Download" Access="None">
+            <ParameterRefRef RefId="%AID%_UP-%TT%00001_R-%TT%0000101" />
+            <ParameterRefRef RefId="%AID%_UP-%TT%00002_R-%TT%0000201" />
+            <ParameterRefRef RefId="%AID%_UP-%TT%00003_R-%TT%0000301" />
+            <ParameterRefRef RefId="%AID%_UP-%TT%00004_R-%TT%0000401" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00100_R-%TT%0010001" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00101_R-%TT%0010101" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00102_R-%TT%0010201" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00103_R-%TT%0010301" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00500_R-%TT%0050001" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00104_R-%TT%0010401" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00105_R-%TT%0010501" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00106_R-%TT%0010601" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00107_R-%TT%0010701" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00501_R-%TT%0050101" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00108_R-%TT%0010801" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00109_R-%TT%0010901" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00110_R-%TT%0011001" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00111_R-%TT%0011101" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00502_R-%TT%0050201" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00112_R-%TT%0011201" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00113_R-%TT%0011301" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00114_R-%TT%0011401" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00115_R-%TT%0011501" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00503_R-%TT%0050301" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00116_R-%TT%0011601" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00117_R-%TT%0011701" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00118_R-%TT%0011801" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00119_R-%TT%0011901" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00504_R-%TT%0050401" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00120_R-%TT%0012001" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00121_R-%TT%0012101" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00122_R-%TT%0012201" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00123_R-%TT%0012301" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00505_R-%TT%0050501" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00124_R-%TT%0012401" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00125_R-%TT%0012501" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00126_R-%TT%0012601" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00127_R-%TT%0012701" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00506_R-%TT%0050601" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00128_R-%TT%0012801" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00129_R-%TT%0012901" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00130_R-%TT%0013001" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00131_R-%TT%0013101" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00507_R-%TT%0050701" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00132_R-%TT%0013201" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00133_R-%TT%0013301" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00134_R-%TT%0013401" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00135_R-%TT%0013501" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00508_R-%TT%0050801" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00136_R-%TT%0013601" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00137_R-%TT%0013701" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00138_R-%TT%0013801" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00139_R-%TT%0013901" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00509_R-%TT%0050901" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00140_R-%TT%0014001" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00141_R-%TT%0014101" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00142_R-%TT%0014201" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00143_R-%TT%0014301" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00510_R-%TT%0051001" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00144_R-%TT%0014401" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00145_R-%TT%0014501" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00146_R-%TT%0014601" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00147_R-%TT%0014701" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00511_R-%TT%0051101" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00148_R-%TT%0014801" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00149_R-%TT%0014901" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00150_R-%TT%0015001" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00151_R-%TT%0015101" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00512_R-%TT%0051201" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00152_R-%TT%0015201" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00153_R-%TT%0015301" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00154_R-%TT%0015401" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00155_R-%TT%0015501" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00513_R-%TT%0051301" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00156_R-%TT%0015601" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00157_R-%TT%0015701" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00158_R-%TT%0015801" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00159_R-%TT%0015901" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00514_R-%TT%0051401" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00160_R-%TT%0016001" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00161_R-%TT%0016101" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00162_R-%TT%0016201" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00163_R-%TT%0016301" />
+            <ParameterRefRef RefId="%AID%_P-%TT%00515_R-%TT%0051501" />
+          </ParameterBlock>
           <ParameterBlock Id="%AID%_PB-nnn" Text="Apple Home Key" Icon="apple" HelpContext="HK-Dokumentation">
             <ParameterRefRef RefId="%AID%_UP-%TT%00001_R-%TT%0000101" HelpContext="HK-Aktivieren" />
             <choose ParamRefId="%AID%_UP-%TT%00001_R-%TT%0000101">

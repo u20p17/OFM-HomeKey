@@ -5,41 +5,23 @@
 #include "NetworkModule.h"
 #include "webassets.h"
 #include "buildtime.h"
+#include <algorithm>
+#include <cstring>
+#include <new>
+#include <string_view>
 #include <esp_random.h>
 #include <sodium.h>
 
 using namespace OpenKNX::Network;
 
-void HomeKeyModule::setupWeb()
+namespace
 {
-    if (webInitialized) return;
-    webInitialized = true;
-    webCommands = xQueueCreate(1, sizeof(WebCodeCommand));
-    if (!webCommands) logErrorP("Home Key web command queue unavailable");
-    uint8_t random[16];
-    esp_fill_random(random, sizeof(random));
-    constexpr char digits[] = "0123456789abcdef";
-    for (auto byte : random) { webToken += digits[byte >> 4]; webToken += digits[byte & 15]; }
+#define HOMEKEY_STRINGIFY_VALUE(value) #value
+#define HOMEKEY_STRINGIFY(value) HOMEKEY_STRINGIFY_VALUE(value)
 
-    auto& web = openknxNetwork.webserver;
-    web.addMenuItem("Home Key", "/homekey", 20);
-    web.addRoute(WEB_GET, "/assets/homekey.js",
-        Webserver::Asset(WebAssets::homekey_js_mime, WebAssets::homekey_js_gz, sizeof(WebAssets::homekey_js_gz)));
-    web.addRoute(WEB_GET, "/assets/homekey.css",
-        Webserver::Asset(WebAssets::homekey_css_mime, WebAssets::homekey_css_gz, sizeof(WebAssets::homekey_css_gz)));
-    web.addRoute(WEB_GET, "/assets/qrcode.js",
-        Webserver::Asset(WebAssets::qrcode_js_mime, WebAssets::qrcode_js_gz, sizeof(WebAssets::qrcode_js_gz)));
-    web.addRoute(WEB_GET, "/homekey", [this](WebRequest&, WebResponse& response)
-    {
-        response.setHeader("Cache-Control", "no-store");
-        response.setHeader("Referrer-Policy", "same-origin");
-        response.setLayout(true);
-        response.setActiveMenu("/homekey");
-        HtmlWriter html(response);
-        const std::string assetVersion = std::to_string(BUILD_TIMESTAMP);
-        html += "<link rel=\"stylesheet\" href=\"/assets/homekey.css?v=";
-        html += assetVersion;
-        html += R"HTML(">
+    constexpr std::string_view homeKeyPageStart =
+        "<link rel=\"stylesheet\" href=\"/assets/homekey.css?v=" HOMEKEY_STRINGIFY(BUILD_TIMESTAMP)
+        R"HTML(">
 <div class="container homekey" id="homekey-page">
   <div class="homekey-title"><h1>Home Key</h1><p>Apple Home einrichten &amp; Zutritt verwalten</p></div>
   <div class="homekey-toolbar" id="homekey-statusbar" role="status" aria-live="polite" aria-atomic="true">
@@ -62,8 +44,8 @@ void HomeKeyModule::setupWeb()
         <p class="homekey-note">Dieser Code wird f&uuml;r die Kopplung in Apple Home verwendet. Der gespeicherte Code wird nicht angezeigt.</p>
         <p class="homekey-notice" id="homekey-permission" role="status">Freigaben werden gepr&uuml;ft&hellip;</p>
         <form id="homekey-form" data-token=")HTML";
-        html += webToken;
-        html += R"HTML(">
+
+    constexpr std::string_view homeKeyPageEnd = R"HTML(">
           <div id="homekey-previous-row" hidden><label for="homekey-previous">Bisheriger Setup-Code</label><input id="homekey-previous" type="password" inputmode="numeric" pattern="[0-9]{8}" minlength="8" maxlength="8" autocomplete="current-password"></div>
           <div class="homekey-field"><label for="homekey-code">Neuer Setup-Code</label><input id="homekey-code" type="password" inputmode="numeric" pattern="[0-9]{8}" minlength="8" maxlength="8" autocomplete="new-password" aria-describedby="homekey-code-help" required></div>
           <div class="homekey-field"><label for="homekey-confirm">Setup-Code wiederholen</label><input id="homekey-confirm" type="password" inputmode="numeric" pattern="[0-9]{8}" minlength="8" maxlength="8" autocomplete="new-password" required></div>
@@ -106,12 +88,79 @@ void HomeKeyModule::setupWeb()
   </section>
   <details class="homekey-help"><summary>Status und Zutrittsberechtigungen</summary><p>Der Status in der Leiste wird automatisch aktualisiert. Das Pairing-Fenster l&auml;sst sich in der ETS oder an der lokalen USB-Konsole &ouml;ffnen. Die Kopplung in Apple Home allein gew&auml;hrt keinen Zutritt: Provisionierte Ger&auml;te in der ETS importieren, Berechtigung aktivieren und eine freie NFC-Tag-ID vergeben. Diese unter Zutrittskontrolle als Tag der gew&uuml;nschten Aktion zuordnen, deren Schaltobjekt mit dem KNX-Aktor verbinden und die Parameter laden.</p></details>
 </div>
-)HTML";
-        html += "<script src=\"/assets/qrcode.js?v=";
-        html += assetVersion;
-        html += "\" defer></script><script src=\"/assets/homekey.js?v=";
-        html += assetVersion;
-        html += "\" defer></script>";
+)HTML"
+        "<script src=\"/assets/qrcode.js?v=" HOMEKEY_STRINGIFY(BUILD_TIMESTAMP)
+        "\" defer></script><script src=\"/assets/homekey.js?v=" HOMEKEY_STRINGIFY(BUILD_TIMESTAMP)
+        "\" defer></script>";
+
+#undef HOMEKEY_STRINGIFY
+#undef HOMEKEY_STRINGIFY_VALUE
+
+    struct HomeKeyPageStream
+    {
+        // Created during setup and kept for the lifetime of the module.
+        std::string_view token;
+        size_t offset = 0;
+    };
+
+    size_t readHomeKeyPage(void* context, uint8_t* buffer, size_t length)
+    {
+        auto& page = *static_cast<HomeKeyPageStream*>(context);
+        size_t offset = page.offset;
+        size_t written = 0;
+        for (const std::string_view part : {homeKeyPageStart, page.token, homeKeyPageEnd})
+        {
+            if (offset >= part.size())
+            {
+                offset -= part.size();
+                continue;
+            }
+            const size_t count = std::min(length - written, part.size() - offset);
+            std::memcpy(buffer + written, part.data() + offset, count);
+            written += count;
+            if (written == length) break;
+            offset = 0;
+        }
+        page.offset += written;
+        return written;
+    }
+}
+
+void HomeKeyModule::setupWeb()
+{
+    if (webInitialized) return;
+    webInitialized = true;
+    webCommands = xQueueCreate(1, sizeof(WebCodeCommand));
+    if (!webCommands) logErrorP("Home Key web command queue unavailable");
+    uint8_t random[16];
+    esp_fill_random(random, sizeof(random));
+    constexpr char digits[] = "0123456789abcdef";
+    for (auto byte : random) { webToken += digits[byte >> 4]; webToken += digits[byte & 15]; }
+
+    auto& web = openknxNetwork.webserver;
+    web.addMenuItem("Home Key", "/homekey", 20);
+    web.addRoute(WEB_GET, "/assets/homekey.js",
+        Webserver::Asset(WebAssets::homekey_js_mime, WebAssets::homekey_js_gz, sizeof(WebAssets::homekey_js_gz)));
+    web.addRoute(WEB_GET, "/assets/homekey.css",
+        Webserver::Asset(WebAssets::homekey_css_mime, WebAssets::homekey_css_gz, sizeof(WebAssets::homekey_css_gz)));
+    web.addRoute(WEB_GET, "/assets/qrcode.js",
+        Webserver::Asset(WebAssets::qrcode_js_mime, WebAssets::qrcode_js_gz, sizeof(WebAssets::qrcode_js_gz)));
+    web.addRoute(WEB_GET, "/homekey", [this](WebRequest&, WebResponse& response)
+    {
+        response.setHeader("Cache-Control", "no-store");
+        response.setHeader("Referrer-Policy", "same-origin");
+        auto* page = new (std::nothrow) HomeKeyPageStream{webToken};
+        if (!page)
+        {
+            response.setStatus(503);
+            response.setContentType("text/plain");
+            response.sendStatic("Temporarily unavailable: insufficient memory");
+            return;
+        }
+        response.setLayout(true);
+        response.setActiveMenu("/homekey");
+        response.sendStream(homeKeyPageStart.size() + page->token.size() + homeKeyPageEnd.size(),
+            readHomeKeyPage, [](void* context) { delete static_cast<HomeKeyPageStream*>(context); }, page);
     });
     web.addRoute(WEB_GET, "/homekey/status", [this](WebRequest&, WebResponse& response)
     {

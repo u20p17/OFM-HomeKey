@@ -372,12 +372,10 @@ Disabled setup-code actions name the missing ETS permission or programming-mode
 requirement instead of showing only a generic warning. No commissioning or
 authorization gates are changed.
 
-The ESP32 Home Key web page uses the network module's `HtmlWriter`, which
-assembles its body in checked 512-byte chunks. It keeps the existing form token,
-code-change checks and browser-generated QR behavior while avoiding a complete
-HTML string and a second response-body copy on the ESP32 heap. Low-memory
-responses are HTTP 503; retry after other browser connections close. Firmware
-builds need the matching OFM-Network implementation of `HtmlWriter`.
+The ESP32 Home Key web page streams static HTML around its per-boot form
+token. Each request allocates only a small stream context for the page body.
+The shared navigation requires OFM-Network support for layout on streamed
+responses. A failed stream allocation returns HTTP 503.
 
 DigitalDoorKey and rednblkx/pn7160 are separately committed local wrappers.
 OAM pins HomeSpan 2.1.8, SHA
